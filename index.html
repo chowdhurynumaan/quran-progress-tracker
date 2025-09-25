@@ -4,455 +4,460 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quran Progress Tracker</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f0f2f5;
-        }
-        .container {
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background-color: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .form-section {
-            border: 1px solid #e2e8f0;
-            border-radius: 0.5rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        .hidden {
-            display: none;
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
         }
     </style>
 </head>
-<body>
-
-<div class="container">
-    <h1 class="text-3xl font-bold text-center mb-6">Quran Progress Tracker</h1>
-
-    <div class="flex justify-between items-center mb-4">
-        <span id="user-id" class="text-sm text-gray-500"></span>
-        <button id="logout-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors">
-            Logout
-        </button>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 md:p-8">
+    <div id="loading-spinner" class="flex flex-col items-center justify-center text-center">
+        <svg class="animate-spin -ml-1 mr-3 h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-lg text-gray-600">Loading...</p>
     </div>
 
-    <!-- Role Selection Section -->
-    <div id="role-selection-modal" class="hidden">
-        <div class="form-section text-center">
-            <h2 class="text-2xl font-semibold mb-4">Welcome!</h2>
-            <p class="mb-4">Please select your role to continue.</p>
-            <div class="flex justify-center space-x-4">
-                <button id="role-admin-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">Admin</button>
-                <button id="role-teacher-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Teacher</button>
-                <button id="role-student-btn" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-600 transition-colors">Student</button>
-            </div>
+    <div id="main-content" class="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 md:p-10 transition-all duration-300 hidden">
+        <div class="flex items-center justify-between mb-6 border-b pb-4">
+            <h1 class="text-3xl font-bold text-gray-800">Quran Tracker</h1>
+            <button id="logout-btn" class="text-sm px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors">Logout</button>
         </div>
-    </div>
+        
+        <!-- Status Message Area -->
+        <div id="status-message" class="hidden p-4 mb-4 rounded-lg text-sm text-center font-medium transition-all duration-300"></div>
+        
+        <!-- User ID Display -->
+        <p class="text-xs text-gray-500 mb-4">
+            User ID: <span id="user-id-display" class="font-mono bg-gray-200 px-2 py-1 rounded-md text-xs"></span>
+        </p>
 
-    <!-- Admin Dashboard Section -->
-    <div id="admin-dashboard" class="hidden">
-        <h2 class="text-2xl font-semibold mb-4">Admin Dashboard</h2>
-
-        <div class="form-section">
-            <h3 class="text-xl font-medium mb-4">Manage Levels</h3>
-            <div class="flex space-x-2">
-                <input type="text" id="level-name" placeholder="Level Name" class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
-                <button id="add-level-btn" class="bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors">
-                    Add Level
-                </button>
-            </div>
-            <div id="existing-levels" class="mt-4"></div>
-        </div>
-
-        <div class="form-section">
-            <h3 class="text-xl font-medium mb-4">Manage Teachers</h3>
-            <div class="space-y-4">
-                <input type="text" id="teacher-name" placeholder="Teacher Name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400">
-                <input type="email" id="teacher-email" placeholder="Teacher Email" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400">
-                <div class="relative">
-                    <select id="assign-level" class="w-full px-4 py-2 border rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-green-400">
-                        <option value="">-- Assign a Level --</option>
-                    </select>
-                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15 9.707l-1.414-1.414L10 12.586l-3.586-3.586L5 9.707l4.293 3.243z"/></svg>
-                    </div>
+        <!-- Role Selection Modal -->
+        <div id="role-modal" class="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+            <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md text-center">
+                <h2 class="text-xl md:text-2xl font-semibold mb-4 text-gray-800">Select Your Role</h2>
+                <p class="text-gray-600 mb-6">This is your first time logging in. Please choose your role to get started.</p>
+                <div class="flex flex-col md:flex-row gap-4">
+                    <button id="role-admin-btn" class="flex-1 px-6 py-3 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors">Admin</button>
+                    <button id="role-teacher-btn" class="flex-1 px-6 py-3 rounded-lg text-white font-medium bg-green-500 hover:bg-green-600 transition-colors">Teacher</button>
+                    <button id="role-student-btn" class="flex-1 px-6 py-3 rounded-lg text-white font-medium bg-purple-500 hover:bg-purple-600 transition-colors">Student</button>
                 </div>
-                <button id="add-teacher-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg w-full hover:bg-green-600 transition-colors">
-                    Add Teacher
-                </button>
-            </div>
-            <div id="existing-teachers" class="mt-4"></div>
-        </div>
-    </div>
-
-    <!-- Teacher Dashboard Section -->
-    <div id="teacher-dashboard" class="hidden">
-        <h2 class="text-2xl font-semibold mb-4">Teacher Dashboard</h2>
-        <div class="form-section">
-            <h3 class="text-xl font-medium mb-4">Student List</h3>
-            <div id="student-list" class="space-y-2"></div>
-        </div>
-        <div class="form-section">
-            <h3 class="text-xl font-medium mb-4">Add New Student</h3>
-            <div class="space-y-4">
-                <input type="text" id="student-name" placeholder="Student Name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
-                <input type="email" id="student-email" placeholder="Student Email (for future parent link)" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
-                <input type="text" id="student-uid" placeholder="Student UID" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400">
-                <button id="add-student-btn" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg w-full hover:bg-purple-600 transition-colors">
-                    Add Student
-                </button>
             </div>
         </div>
-    </div>
-    
-    <!-- Student Dashboard Section -->
-    <div id="student-dashboard" class="hidden">
-        <h2 class="text-2xl font-semibold mb-4">Student Dashboard</h2>
-        <div id="my-quran-progress" class="space-y-6">
-            <div class="form-section flex justify-between items-start">
-                <div>
-                    <h3 class="text-xl font-medium">My Goals</h3>
-                    <div id="goals" class="mt-2 space-y-1"></div>
-                </div>
-                <button id="update-goals-btn" class="bg-indigo-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors">
-                    Update Goals
-                </button>
-            </div>
-            <div class="form-section">
-                <h3 class="text-xl font-medium mb-4">My Progress</h3>
-                <p class="text-sm text-gray-500 mb-2">Click to mark as complete</p>
-                <div id="progress-entries" class="space-y-2"></div>
-            </div>
-        </div>
+
+        <!-- Dynamic Dashboard Content -->
+        <div id="dashboard-content"></div>
     </div>
 
-    <div id="loading-screen" class="flex flex-col items-center justify-center p-8 hidden">
-        <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
-        <p class="mt-4 text-gray-600">Loading...</p>
-    </div>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        setLogLevel('debug'); // Enable debug logging for Firestore
 
-    <div id="status-message" class="mt-6 text-center text-red-500"></div>
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const mainContent = document.getElementById('main-content');
+        const roleModal = document.getElementById('role-modal');
+        const dashboardContent = document.getElementById('dashboard-content');
+        const userIdDisplay = document.getElementById('user-id-display');
+        const statusMessageEl = document.getElementById('status-message');
+        const logoutBtn = document.getElementById('logout-btn');
 
-</div>
+        // Global variables provided by the Canvas environment
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot, getDocs, updateDoc, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    // DO NOT TOUCH THESE VARIABLES
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-    let app, auth, db, userId;
-    let isAuthReady = false;
-
-    const loadingScreen = document.getElementById('loading-screen');
-    const statusMessage = document.getElementById('status-message');
-    const adminDashboard = document.getElementById('admin-dashboard');
-    const teacherDashboard = document.getElementById('teacher-dashboard');
-    const studentDashboard = document.getElementById('student-dashboard');
-    const logoutBtn = document.getElementById('logout-btn');
-    const roleSelectionModal = document.getElementById('role-selection-modal');
-
-    // Display a status message to the user
-    function displayStatus(message, isError = true) {
-        statusMessage.textContent = message;
-        statusMessage.className = `mt-6 text-center font-bold ${isError ? 'text-red-500' : 'text-green-500'}`;
-    }
-
-    // Display a specific dashboard based on user role
-    function showDashboard(role) {
-        adminDashboard.classList.add('hidden');
-        teacherDashboard.classList.add('hidden');
-        studentDashboard.classList.add('hidden');
-        roleSelectionModal.classList.add('hidden');
-
-        if (role === 'admin') {
-            adminDashboard.classList.remove('hidden');
-        } else if (role === 'teacher') {
-            teacherDashboard.classList.remove('hidden');
-        } else if (role === 'student') {
-            studentDashboard.classList.remove('hidden');
-        } else {
-            // No role, show the role selection modal
-            roleSelectionModal.classList.remove('hidden');
-        }
-    }
-
-    // Initialize Firebase app and services
-    async function initializeFirebase() {
-        if (!firebaseConfig) {
-            displayStatus("Error - Firebase config is invalid.");
-            return;
-        }
-
+        // Firebase Initialization
+        let app, db, auth;
         try {
             app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
             db = getFirestore(app);
-
-            loadingScreen.classList.remove('hidden');
-
-            const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                if (!isAuthReady) {
-                    if (user) {
-                        userId = user.uid;
-                        document.getElementById('user-id').textContent = `User ID: ${userId}`;
-                        const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'info');
-                        const userDocSnap = await getDoc(userDocRef);
-
-                        if (userDocSnap.exists()) {
-                            const profile = userDocSnap.data();
-                            showDashboard(profile.role);
-                            setupDashboardListeners(profile.role);
-                        } else {
-                            // New user, show role selection modal
-                            showDashboard(null); 
-                        }
-                    } else {
-                        // Check if a manual logout has occurred
-                        if (sessionStorage.getItem('isLoggedOut') !== 'true') {
-                            // Not authenticated. Try to sign in with custom token.
-                            if (initialAuthToken) {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                            } else {
-                                // If no custom token, sign in anonymously for profile creation.
-                                await signInAnonymously(auth);
-                            }
-                        } else {
-                            // Manual logout flag is set, don't auto-login
-                            showDashboard(null);
-                        }
-                    }
-                    loadingScreen.classList.add('hidden');
-                    isAuthReady = true;
-                    unsubscribe(); // Stop listening after the first auth state check
-                }
-            });
-        } catch (error) {
-            displayStatus(`Error initializing Firebase: ${error.message}`);
-            console.error(error);
+            auth = getAuth(app);
+        } catch (e) {
+            showMessage('error', 'Firebase initialization failed. Check your configuration.');
+            console.error('Firebase initialization error:', e);
+            loadingSpinner.classList.add('hidden');
         }
-    }
 
-    // Function to handle role selection
-    async function handleRoleSelection(role) {
-        // Clear the manual logout flag to allow normal session behavior
-        sessionStorage.removeItem('isLoggedOut');
-        
-        const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile`, 'info');
-        await setDoc(userDocRef, { role, createdAt: new Date() });
-        roleSelectionModal.classList.add('hidden');
-        showDashboard(role);
-        setupDashboardListeners(role);
-    }
+        // --- Authentication & Role Management ---
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userId = user.uid;
+                userIdDisplay.textContent = userId;
 
-    // Event listeners for role selection buttons
-    document.getElementById('role-admin-btn').addEventListener('click', () => handleRoleSelection('admin'));
-    document.getElementById('role-teacher-btn').addEventListener('click', () => handleRoleSelection('teacher'));
-    document.getElementById('role-student-btn').addEventListener('click', async () => {
-      // For a student, also create the public progress document
-      const studentDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
-      await setDoc(studentDocRef, { name: 'New Student', teacherId: '', createdAt: new Date(), progress: {}, goals: {} });
-      handleRoleSelection('student');
-    });
+                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile/info`);
+                const userDocSnap = await getDoc(userDocRef);
 
-    function setupDashboardListeners(role) {
-        if (role === 'admin') {
-            // Admin-specific listeners
-            // Add Level
-            document.getElementById('add-level-btn').addEventListener('click', async () => {
-                const levelName = document.getElementById('level-name').value;
-                if (!levelName) {
-                    displayStatus('Please enter a level name.');
-                    return;
+                if (userDocSnap.exists() && userDocSnap.data().role) {
+                    const { role } = userDocSnap.data();
+                    renderDashboard(role, userId);
+                } else {
+                    roleModal.classList.remove('hidden');
                 }
-                const levelsColRef = collection(db, `artifacts/${appId}/public/data/levels`);
-                await addDoc(levelsColRef, { name: levelName, createdAt: new Date() });
-                document.getElementById('level-name').value = '';
-                displayStatus('Level added successfully!', false);
-            });
-
-            // Add Teacher
-            document.getElementById('add-teacher-btn').addEventListener('click', async () => {
-                const teacherName = document.getElementById('teacher-name').value;
-                const teacherEmail = document.getElementById('teacher-email').value;
-                const assignedLevel = document.getElementById('assign-level').value;
-                if (!teacherName || !teacherEmail || !assignedLevel) {
-                    displayStatus('Please fill out all fields.');
-                    return;
-                }
-                const teachersColRef = collection(db, `artifacts/${appId}/public/data/teachers`);
-                await addDoc(teachersColRef, {
-                    name: teacherName,
-                    email: teacherEmail,
-                    assignedLevel: assignedLevel,
-                    createdAt: new Date()
-                });
-                document.getElementById('teacher-name').value = '';
-                document.getElementById('teacher-email').value = '';
-                document.getElementById('assign-level').value = '';
-                displayStatus('Teacher added successfully!', false);
-            });
-
-            // Listen for real-time updates to levels
-            const levelsColRef = collection(db, `artifacts/${appId}/public/data/levels`);
-            onSnapshot(levelsColRef, (snapshot) => {
-                const levelsList = document.getElementById('existing-levels');
-                levelsList.innerHTML = '';
-                const selectElement = document.getElementById('assign-level');
-                selectElement.innerHTML = '<option value="">-- Assign a Level --</option>';
-                snapshot.forEach(doc => {
-                    const level = doc.data();
-                    levelsList.innerHTML += `<div class="p-2 border rounded-lg mb-2">${level.name}</div>`;
-                    const option = document.createElement('option');
-                    option.value = level.name;
-                    option.textContent = level.name;
-                    selectElement.appendChild(option);
-                });
-            });
-
-            // Listen for real-time updates to teachers
-            const teachersColRef = collection(db, `artifacts/${appId}/public/data/teachers`);
-            onSnapshot(teachersColRef, (snapshot) => {
-                const teachersList = document.getElementById('existing-teachers');
-                teachersList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const teacher = doc.data();
-                    teachersList.innerHTML += `<div class="p-2 border rounded-lg mb-2">${teacher.name} - ${teacher.email} (${teacher.assignedLevel})</div>`;
-                });
-            });
-
-        } else if (role === 'teacher') {
-            // Teacher-specific listeners
-            // Add Student
-            document.getElementById('add-student-btn').addEventListener('click', async () => {
-                const studentName = document.getElementById('student-name').value;
-                const studentEmail = document.getElementById('student-email').value;
-                const studentUid = document.getElementById('student-uid').value;
-                if (!studentName || !studentUid) {
-                    displayStatus('Please enter a student name and UID.');
-                    return;
-                }
-                const studentDocRef = doc(db, `artifacts/${appId}/public/data/students`, studentUid);
-                await setDoc(studentDocRef, {
-                    name: studentName,
-                    email: studentEmail,
-                    teacherId: userId,
-                    createdAt: new Date(),
-                    progress: {}
-                });
-                document.getElementById('student-name').value = '';
-                document.getElementById('student-email').value = '';
-                document.getElementById('student-uid').value = '';
-                displayStatus('Student added successfully!', false);
-            });
-
-            // Listen for real-time updates to students for this teacher
-            const studentsColRef = collection(db, `artifacts/${appId}/public/data/students`);
-            const q = query(studentsColRef, where("teacherId", "==", userId));
-            onSnapshot(q, (snapshot) => {
-                const studentsList = document.getElementById('student-list');
-                studentsList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const student = doc.data();
-                    const studentId = doc.id;
-                    const studentDiv = document.createElement('div');
-                    studentDiv.className = "flex justify-between items-center p-2 border rounded-lg";
-                    studentDiv.innerHTML = `
-                        <span>${student.name}</span>
-                        <button class="bg-blue-500 text-white font-bold py-1 px-3 rounded-lg text-sm hover:bg-blue-600 transition-colors view-progress-btn" data-student-id="${studentId}">
-                            View Progress
-                        </button>
-                    `;
-                    studentsList.appendChild(studentDiv);
-                });
-
-                // Attach event listeners after elements are created
-                document.querySelectorAll('.view-progress-btn').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const studentId = e.target.dataset.studentId;
-                        displayStatus(`Viewing progress for student ID: ${studentId}`, false);
+            } else {
+                // Not authenticated, sign in with custom token or anonymously
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken).catch(e => {
+                        console.error('Custom token sign-in failed:', e);
+                        signInAnonymously(auth);
                     });
-                });
-            });
-        } else if (role === 'student') {
-            // Student-specific listeners
-            // Listen for real-time updates to student goals and progress
-            const studentDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
-            onSnapshot(studentDocRef, (doc) => {
-                if (doc.exists()) {
-                    const student = doc.data();
-                    
-                    // Display goals
-                    const goalsDiv = document.getElementById('goals');
-                    goalsDiv.innerHTML = `
-                        <p><strong>Weekly Qaida Lesson:</strong> ${student.goals?.qaidaLesson || 0}</p>
-                        <p><strong>Daily Quran Reading:</strong> ${student.goals?.quranPages || 0} pages</p>
-                        <p><strong>Weekly Hifdh:</strong> ${student.goals?.hifdhPages || 0} pages</p>
-                    `;
-
-                    // Display progress entries
-                    const progressDiv = document.getElementById('progress-entries');
-                    progressDiv.innerHTML = '';
-                    if (student.progress) {
-                        // Sort progress entries by date
-                        const sortedDates = Object.keys(student.progress).sort();
-                        for (const date of sortedDates) {
-                            const entry = student.progress[date];
-                            progressDiv.innerHTML += `
-                                <div class="flex justify-between items-center p-2 border rounded-lg">
-                                    <span>${date}: ${entry.qaidaLessons} Qaida, ${entry.quranPages} Quran, ${entry.hifdhPages} Hifdh</span>
-                                </div>
-                            `;
-                        }
-                    }
+                } else {
+                    await signInAnonymously(auth);
                 }
-            });
+            }
+            loadingSpinner.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        });
 
-            // Update goals button
-            document.getElementById('update-goals-btn').addEventListener('click', async () => {
-                const qaidaLessons = 5;
-                const quranPages = 2;
-                const hifdhPages = 1;
+        // Event listeners for role selection
+        document.getElementById('role-admin-btn').addEventListener('click', () => saveRole('admin'));
+        document.getElementById('role-teacher-btn').addEventListener('click', () => saveRole('teacher'));
+        document.getElementById('role-student-btn').addEventListener('click', () => saveRole('student'));
 
-                const studentDocRef = doc(db, `artifacts/${appId}/public/data/students`, userId);
-                await updateDoc(studentDocRef, {
-                    goals: {
-                        qaidaLessons: qaidaLessons,
-                        quranPages: quranPages,
-                        hifdhPages: hifdhPages
+        async function saveRole(role) {
+            try {
+                const userId = auth.currentUser.uid;
+                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile/info`);
+                await setDoc(userDocRef, { role, created: new Date().toISOString() });
+                roleModal.classList.add('hidden');
+                showMessage('success', `Role "${role}" saved successfully. Redirecting...`);
+                renderDashboard(role, userId);
+            } catch (e) {
+                showMessage('error', `Failed to save role: ${e.message}`);
+                console.error("Error saving role: ", e);
+            }
+        }
+
+        logoutBtn.addEventListener('click', async () => {
+            await signOut(auth);
+            window.location.reload();
+        });
+
+        // --- Dashboard Rendering ---
+        function renderDashboard(role, userId) {
+            dashboardContent.innerHTML = '';
+            let content;
+            switch (role) {
+                case 'admin':
+                    content = createAdminDashboard(userId);
+                    break;
+                case 'teacher':
+                    content = createTeacherDashboard(userId);
+                    break;
+                case 'student':
+                    content = createStudentDashboard(userId);
+                    break;
+                default:
+                    content = '<p class="text-center text-red-500">Invalid role.</p>';
+                    break;
+            }
+            dashboardContent.innerHTML = content;
+            setupDashboardListeners(role, userId);
+        }
+
+        // --- Dashboard HTML Generation ---
+        function createAdminDashboard() {
+            return `
+                <div id="admin-dashboard" class="space-y-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Admin Dashboard</h2>
+                    
+                    <!-- Manage Levels -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Manage Levels</h3>
+                        <form id="add-level-form" class="flex flex-col md:flex-row gap-4 mb-6">
+                            <input type="text" id="level-name" placeholder="New Level Name (e.g., Qaida)" required class="flex-1 p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <button type="submit" class="px-6 py-3 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors">Add Level</button>
+                        </form>
+                        <h4 class="font-medium text-gray-600 mb-2">Existing Levels:</h4>
+                        <ul id="levels-list" class="space-y-2 text-gray-700"></ul>
+                    </div>
+                    
+                    <!-- Manage Teachers -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Manage Teachers</h3>
+                        <form id="add-teacher-form" class="space-y-4">
+                            <input type="text" id="teacher-name" placeholder="Teacher Name" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="email" id="teacher-email" placeholder="Teacher Email" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="text" id="teacher-uid" placeholder="Teacher UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <select id="teacher-level" class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                                <option value="">Assign a Level</option>
+                            </select>
+                            <button type="submit" class="w-full px-6 py-3 rounded-lg text-white font-medium bg-green-500 hover:bg-green-600 transition-colors">Add Teacher</button>
+                        </form>
+                        <h4 class="font-medium text-gray-600 mt-6 mb-2">Existing Teachers:</h4>
+                        <ul id="teachers-list" class="space-y-2 text-gray-700"></ul>
+                    </div>
+
+                    <!-- Manage Students -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Manage Students</h3>
+                        <form id="add-student-form" class="space-y-4">
+                            <input type="text" id="student-name" placeholder="Student Name" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="email" id="student-email" placeholder="Student Email" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="text" id="student-uid" placeholder="Student UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="text" id="student-teacher-uid" placeholder="Teacher UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <button type="submit" class="w-full px-6 py-3 rounded-lg text-white font-medium bg-purple-500 hover:bg-purple-600 transition-colors">Add Student</button>
+                        </form>
+                        <h4 class="font-medium text-gray-600 mt-6 mb-2">Existing Students:</h4>
+                        <ul id="students-list" class="space-y-2 text-gray-700"></ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createTeacherDashboard(teacherId) {
+            return `
+                <div id="teacher-dashboard" class="space-y-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Teacher Dashboard</h2>
+
+                    <!-- Add Student -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Add New Student</h3>
+                        <form id="teacher-add-student-form" class="space-y-4">
+                            <input type="text" id="teacher-student-name" placeholder="Student Name" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="email" id="teacher-student-email" placeholder="Student Email" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <input type="text" id="teacher-student-uid" placeholder="Student UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
+                            <button type="submit" class="w-full px-6 py-3 rounded-lg text-white font-medium bg-purple-500 hover:bg-purple-600 transition-colors">Add Student</button>
+                        </form>
+                    </div>
+
+                    <!-- Student List -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">My Students</h3>
+                        <ul id="teacher-students-list" class="space-y-4 text-gray-700"></ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createStudentDashboard(studentId) {
+            return `
+                <div id="student-dashboard" class="space-y-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Student Dashboard</h2>
+
+                    <!-- View Goals -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">My Goals</h3>
+                        <ul id="student-goals-list" class="list-disc list-inside space-y-2 text-gray-700">
+                            <li>Weekly Qaida Lessons</li>
+                            <li>Daily Quran Reading</li>
+                            <li>Memorize Surah Al-Fatiha</li>
+                        </ul>
+                        <button id="update-goals-btn" class="mt-4 px-6 py-2 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors">Update Goals</button>
+                    </div>
+
+                    <!-- View Progress -->
+                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
+                        <h3 class="text-xl font-semibold mb-4 text-gray-700">My Progress</h3>
+                        <ul id="student-progress-list" class="space-y-2 text-gray-700"></ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- Event Listeners and Firestore Operations ---
+        function setupDashboardListeners(role, userId) {
+            if (role === 'admin') {
+                const addLevelForm = document.getElementById('add-level-form');
+                const addTeacherForm = document.getElementById('add-teacher-form');
+                const addStudentForm = document.getElementById('add-student-form');
+                const levelsList = document.getElementById('levels-list');
+                const teachersList = document.getElementById('teachers-list');
+                const studentsList = document.getElementById('students-list');
+                const teacherLevelSelect = document.getElementById('teacher-level');
+
+                // Real-time listener for Levels
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/levels`), (snapshot) => {
+                    levelsList.innerHTML = '';
+                    teacherLevelSelect.innerHTML = '<option value="">Assign a Level</option>';
+                    snapshot.forEach((doc) => {
+                        const level = doc.data();
+                        const li = document.createElement('li');
+                        li.textContent = level.name;
+                        levelsList.appendChild(li);
+
+                        const option = document.createElement('option');
+                        option.value = level.name;
+                        option.textContent = level.name;
+                        teacherLevelSelect.appendChild(option);
+                    });
+                }, (error) => showMessage('error', `Error fetching levels: ${error.message}`));
+
+                // Real-time listener for Teachers
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/teachers`), (snapshot) => {
+                    teachersList.innerHTML = '';
+                    snapshot.forEach((doc) => {
+                        const teacher = doc.data();
+                        const li = document.createElement('li');
+                        li.textContent = `${teacher.name} (${teacher.email}) - Level: ${teacher.level || 'N/A'}`;
+                        teachersList.appendChild(li);
+                    });
+                }, (error) => showMessage('error', `Error fetching teachers: ${error.message}`));
+
+                // Real-time listener for Students
+                onSnapshot(collection(db, `artifacts/${appId}/public/data/students`), (snapshot) => {
+                    studentsList.innerHTML = '';
+                    snapshot.forEach((doc) => {
+                        const student = doc.data();
+                        const li = document.createElement('li');
+                        li.textContent = `${student.name} (${student.email}) - Teacher UID: ${student.teacherUid}`;
+                        studentsList.appendChild(li);
+                    });
+                }, (error) => showMessage('error', `Error fetching students: ${error.message}`));
+
+                addLevelForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('level-name').value;
+                    try {
+                        await addDoc(collection(db, `artifacts/${appId}/public/data/levels`), { name });
+                        showMessage('success', 'Level added successfully!');
+                        addLevelForm.reset();
+                    } catch (e) {
+                        showMessage('error', `Error adding level: ${e.message}`);
                     }
                 });
-                displayStatus('Goals updated successfully!', false);
-            });
+
+                addTeacherForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('teacher-name').value;
+                    const email = document.getElementById('teacher-email').value;
+                    const uid = document.getElementById('teacher-uid').value;
+                    const level = document.getElementById('teacher-level').value;
+                    try {
+                        await setDoc(doc(db, `artifacts/${appId}/public/data/teachers`, uid), { name, email, uid, level });
+                        showMessage('success', 'Teacher added successfully!');
+                        addTeacherForm.reset();
+                    } catch (e) {
+                        showMessage('error', `Error adding teacher: ${e.message}`);
+                    }
+                });
+
+                addStudentForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('student-name').value;
+                    const email = document.getElementById('student-email').value;
+                    const uid = document.getElementById('student-uid').value;
+                    const teacherUid = document.getElementById('student-teacher-uid').value;
+                    try {
+                        await setDoc(doc(db, `artifacts/${appId}/public/data/students`, uid), { name, email, uid, teacherUid });
+                        showMessage('success', 'Student added successfully!');
+                        addStudentForm.reset();
+                    } catch (e) {
+                        showMessage('error', `Error adding student: ${e.message}`);
+                    }
+                });
+            } else if (role === 'teacher') {
+                const teacherAddStudentForm = document.getElementById('teacher-add-student-form');
+                const teacherStudentsList = document.getElementById('teacher-students-list');
+
+                // Real-time listener for students associated with this teacher
+                const q = query(collection(db, `artifacts/${appId}/public/data/students`), where("teacherUid", "==", userId));
+                onSnapshot(q, (snapshot) => {
+                    teacherStudentsList.innerHTML = '';
+                    snapshot.forEach((doc) => {
+                        const student = doc.data();
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center justify-between p-4 bg-white rounded-lg shadow-sm';
+                        li.innerHTML = `
+                            <span>${student.name} (${student.email})</span>
+                            <button class="view-progress-btn px-4 py-2 text-sm rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors" data-uid="${student.uid}">View Progress</button>
+                        `;
+                        teacherStudentsList.appendChild(li);
+                    });
+
+                    // Add event listeners to the new buttons
+                    teacherStudentsList.querySelectorAll('.view-progress-btn').forEach(button => {
+                        button.addEventListener('click', (e) => {
+                            const studentUid = e.target.getAttribute('data-uid');
+                            showMessage('info', `Viewing progress for student UID: ${studentUid}`);
+                            console.log(`View Progress clicked for student UID: ${studentUid}`);
+                        });
+                    });
+                }, (error) => showMessage('error', `Error fetching students: ${error.message}`));
+
+                teacherAddStudentForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const name = document.getElementById('teacher-student-name').value;
+                    const email = document.getElementById('teacher-student-email').value;
+                    const uid = document.getElementById('teacher-student-uid').value;
+                    try {
+                        await setDoc(doc(db, `artifacts/${appId}/public/data/students`, uid), { name, email, uid, teacherUid: userId });
+                        showMessage('success', 'Student added successfully!');
+                        teacherAddStudentForm.reset();
+                    } catch (e) {
+                        showMessage('error', `Error adding student: ${e.message}`);
+                    }
+                });
+
+            } else if (role === 'student') {
+                const updateGoalsBtn = document.getElementById('update-goals-btn');
+                const studentGoalsList = document.getElementById('student-goals-list');
+                const studentProgressList = document.getElementById('student-progress-list');
+
+                updateGoalsBtn.addEventListener('click', async () => {
+                    const goalsDocRef = doc(db, `artifacts/${appId}/users/${userId}/goals/list`);
+                    const goals = [
+                        'Weekly Qaida Lessons',
+                        'Daily Quran Reading',
+                        'Memorize Surah Al-Fatiha',
+                        'Learn 5 new verses per week'
+                    ];
+                    try {
+                        await setDoc(goalsDocRef, { goals });
+                        showMessage('success', 'Goals updated successfully!');
+                    } catch (e) {
+                        showMessage('error', `Error updating goals: ${e.message}`);
+                    }
+                });
+
+                // Real-time listener for student progress
+                const progressCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/progress`);
+                onSnapshot(progressCollectionRef, (snapshot) => {
+                    studentProgressList.innerHTML = '';
+                    if (snapshot.empty) {
+                        const li = document.createElement('li');
+                        li.className = 'p-4 bg-gray-100 rounded-lg text-gray-500 text-center';
+                        li.textContent = 'No progress entries yet.';
+                        studentProgressList.appendChild(li);
+                    } else {
+                        snapshot.forEach((doc) => {
+                            const entry = doc.data();
+                            const li = document.createElement('li');
+                            li.className = 'p-4 bg-white rounded-lg shadow-sm';
+                            li.innerHTML = `
+                                <p class="text-sm font-semibold">${entry.description}</p>
+                                <p class="text-xs text-gray-500 mt-1">${new Date(entry.timestamp).toLocaleString()}</p>
+                            `;
+                            studentProgressList.appendChild(li);
+                        });
+                    }
+                }, (error) => showMessage('error', `Error fetching progress: ${error.message}`));
+            }
         }
-    }
 
-    // Handle logout
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            // Set a flag to prevent immediate re-authentication on reload
-            sessionStorage.setItem('isLoggedOut', 'true');
-            await auth.signOut();
-            window.location.reload();
-        } catch (error) {
-            console.error("Error signing out:", error);
-            displayStatus("Error signing out.");
+        // --- Utility Functions ---
+        function showMessage(type, message) {
+            statusMessageEl.textContent = message;
+            statusMessageEl.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+            if (type === 'success') {
+                statusMessageEl.classList.add('bg-green-100', 'text-green-700');
+            } else if (type === 'error') {
+                statusMessageEl.classList.add('bg-red-100', 'text-red-700');
+            } else {
+                statusMessageEl.classList.add('bg-blue-100', 'text-blue-700');
+            }
+            setTimeout(() => {
+                statusMessageEl.classList.add('hidden');
+            }, 5000);
         }
-    });
-
-    // Initial load and Firebase initialization
-    window.onload = initializeFirebase;
-
-</script>
-
+    </script>
 </body>
 </html>
