@@ -51,6 +51,10 @@
             <div id="auth-info" class="mt-4 text-xs md:text-sm text-gray-500 bg-gray-50 p-2 rounded-lg break-words">
                 <span id="user-id-display">Initializing user...</span>
             </div>
+            <!-- Added a critical warning for self-hosting -->
+            <div id="security-warning" class="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+                ⚠️ **Self-Hosting Alert:** Ensure your **Firestore Security Rules** allow authenticated users (including anonymous users) to read/write to the `users/{userId}/students` collection.
+            </div>
         </header>
 
         <div id="loading-spinner" class="text-center py-10">
@@ -231,7 +235,7 @@
                         </div>
 
                         <!-- MODE 3: Verses/Pages Per Week -->
-                        <div id="goal-input-weekly_verses" class="hidden grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div id="goal-input-weekly_verses" class="hidden grid grid-cols-2 md:col-span-5 gap-4">
                             <div class="col-span-2 md:col-span-2">
                                 <label for="weekly-rate-value" class="block text-xs font-medium text-gray-700">Weekly Goal Amount:</label>
                                 <div class="flex">
@@ -1144,7 +1148,9 @@
                 renderStudentSelector();
                 console.log(`Loaded ${students.length} students.`);
             }, (error) => {
-                console.error("Error fetching students list:", error);
+                // IMPORTANT: This error is often a security rule violation. 
+                console.error("Error fetching students list (Check Firestore Security Rules):", error);
+                document.getElementById('loading-spinner').innerHTML = `<p class="text-red-600">Failed to connect to Firebase. Please check your config and rules.</p>`;
             });
         }
         
@@ -1306,25 +1312,31 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
+                // Start by attempting to sign in anonymously.
+                // This is crucial for cross-device persistence when no explicit auth method is used.
+                signInAnonymously(auth).then(anonUserCredential => {
+                    userId = anonUserCredential.user.uid;
+                    document.getElementById('user-id-display').textContent = `Authenticated Anonymously. User ID: ${userId}`;
+                    listenForStudentList(); 
+                }).catch(error => {
+                    console.error("Anonymous Sign-in failed.", error);
+                    // This is the common failure point if rules are too strict
+                    document.getElementById('loading-spinner').innerHTML = `<p class="text-red-600 font-semibold">Failed to connect to Firebase. Please check your config and **Security Rules**.</p>`;
+                });
+                
+                // We keep the auth state listener for robustness, though the app relies on the sign-in promise above.
+                onAuthStateChanged(auth, (user) => {
+                    if (user && user.uid !== userId) {
                         userId = user.uid;
                         document.getElementById('user-id-display').textContent = `Authenticated User ID: ${userId}`;
-                        listenForStudentList(); 
-                    } else {
-                        console.log("No authenticated user found. Signing in anonymously...");
-                        try {
-                            // Use anonymous sign-in for the general public environment
-                            const anonUser = await signInAnonymously(auth);
-                            userId = anonUser.user.uid;
-                            document.getElementById('user-id-display').textContent = `Authenticated Anonymously. User ID: ${userId}`;
-                            listenForStudentList(); 
-                        } catch (error) {
-                            console.error("Anonymous Sign-in failed.", error);
-                            document.getElementById('loading-spinner').innerHTML = `<p class="text-red-600">Failed to connect to Firebase. Please check your config and rules.</p>`;
+                        // listenForStudentList() is called in the signInAnonymously promise, 
+                        // but if a different auth process runs, we ensure listeners start.
+                        if (user.isAnonymous) {
+                             listenForStudentList(); 
                         }
                     }
                 });
+
 
             } catch (e) {
                 console.error("Failed to initialize Firebase:", e);
