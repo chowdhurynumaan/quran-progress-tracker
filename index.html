@@ -3,461 +3,1257 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quran Progress Tracker</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Quran Memorization Tracker - Self-Hosted</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        /* Custom styles for a cleaner look */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
+            background-color: #f7f9fb;
+        }
+        .metric-card {
+            @apply bg-white p-4 rounded-xl shadow-lg border border-gray-200 transition duration-300 hover:shadow-xl;
+        }
+        .action-input {
+            @apply mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm;
+        }
+        /* Style for the simplified daily log sections */
+        .log-group {
+            @apply p-4 bg-white rounded-lg border border-gray-200 shadow-inner transition duration-200 ease-in-out;
+        }
+        
+        /* Enhanced Style for active goal mode button */
+        .goal-mode-btn {
+            /* Base style for all mode buttons */
+            @apply py-2 px-4 rounded-lg text-sm font-medium transition duration-200 border border-green-500 text-green-700 hover:bg-green-100;
+        }
+        .goal-mode-active {
+            /* Distinct style for the currently selected mode */
+            @apply bg-green-700 text-white shadow-xl ring-4 ring-green-300 transform scale-[1.03];
+        }
+        /* Mobile-specific adjustments for the table */
+        @media (max-width: 768px) {
+            /* Hide the Total Verses and Completion % columns on mobile */
+            .hide-on-mobile {
+                display: none;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 md:p-8">
-    <div id="loading-spinner" class="flex flex-col items-center justify-center text-center">
-        <svg class="animate-spin -ml-1 mr-3 h-10 w-10 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="mt-4 text-lg text-gray-600">Loading...</p>
-    </div>
+<body class="min-h-screen p-4 md:p-8">
 
-    <div id="main-content" class="w-full max-w-4xl bg-white rounded-xl shadow-2xl p-6 md:p-10 transition-all duration-300 hidden">
-        <div class="flex items-center justify-between mb-6 border-b pb-4">
-            <h1 class="text-3xl font-bold text-gray-800">Quran Tracker</h1>
-            <button id="logout-btn" class="text-sm px-4 py-2 bg-red-500 text-white rounded-lg shadow hover:bg-red-600 transition-colors">Logout</button>
+    <div id="app" class="max-w-6xl mx-auto bg-white shadow-2xl rounded-xl p-6 md:p-10">
+        <header class="text-center mb-10">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-green-700 mb-2">Hifz Tracker for Teachers</h1>
+            <p class="text-gray-600">Quickly log student progress and track their long-term memorization goals.</p>
+            <div id="auth-info" class="mt-4 text-xs md:text-sm text-gray-500 bg-gray-50 p-2 rounded-lg break-words">
+                <span id="user-id-display">Initializing user...</span>
+            </div>
+        </header>
+
+        <div id="loading-spinner" class="text-center py-10">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+            <p class="mt-3 text-gray-600">Loading progress...</p>
         </div>
-        
-        <!-- Status Message Area -->
-        <div id="status-message" class="hidden p-4 mb-4 rounded-lg text-sm text-center font-medium transition-all duration-300"></div>
-        
-        <!-- User ID Display -->
-        <p class="text-xs text-gray-500 mb-4">
-            User ID: <span id="user-id-display" class="font-mono bg-gray-200 px-2 py-1 rounded-md text-xs"></span>
-        </p>
 
-        <!-- Role Selection Modal -->
-        <div id="role-modal" class="absolute inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-            <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md text-center">
-                <h2 class="text-xl md:text-2xl font-semibold mb-4 text-gray-800">Select Your Role</h2>
-                <p class="text-gray-600 mb-6">This is your first time logging in. Please choose your role to get started.</p>
-                <div class="flex flex-col md:flex-row gap-4">
-                    <button id="role-admin-btn" class="flex-1 px-6 py-3 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors">Admin</button>
-                    <button id="role-teacher-btn" class="flex-1 px-6 py-3 rounded-lg text-white font-medium bg-green-500 hover:bg-green-600 transition-colors">Teacher</button>
-                    <button id="role-student-btn" class="flex-1 px-6 py-3 rounded-lg text-white font-medium bg-purple-500 hover:bg-purple-600 transition-colors">Student</button>
+        <div id="tracker-content" class="hidden">
+
+            <!-- 1. STUDENT SELECTION AND MANAGEMENT -->
+            <section class="mb-10 border-b pb-6 p-4 bg-indigo-50 rounded-xl border-2 border-indigo-200">
+                <h2 class="text-xl md:text-2xl font-bold text-indigo-700 mb-4">1. Select Student</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Student Selection Dropdown -->
+                    <div class="md:col-span-1">
+                        <label for="student-selector" class="block text-sm font-semibold text-gray-700">Student List:</label>
+                        <select id="student-selector" class="action-input">
+                            <option value="">-- Please Select a Student --</option>
+                            <!-- Options filled by JS -->
+                        </select>
+                    </div>
+
+                    <!-- Add New Student Input and Button -->
+                    <div class="md:col-span-2">
+                        <label for="new-student-name" class="block text-sm font-semibold text-gray-700">Add New Student:</label>
+                        <form id="add-student-form" class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
+                            <input type="text" id="new-student-name" placeholder="Enter student's name" class="action-input flex-grow" required>
+                            <button type="submit" class="bg-indigo-600 text-white py-2.5 px-6 rounded-lg hover:bg-indigo-700 transition duration-150 shadow-lg whitespace-nowrap">
+                                Add Student
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <p id="selected-student-display" class="mt-4 text-base md:text-lg font-bold text-indigo-700 hidden border-t pt-3">
+                    Tracking: <span id="current-student-name" class="text-indigo-900"></span>
+                </p>
+            </section>
+            
+            <!-- Conditional Content: Shows only when a student is selected -->
+            <div id="student-specific-content" class="hidden">
+                
+                <!-- 2. LOG DAILY PROGRESS (PRECISE AYAH INPUTS) -->
+                <section class="mb-10 border-b pb-6">
+                    <h2 class="text-xl md:text-2xl font-bold text-blue-700 mb-6">2. Log Daily Memorization Session (Precise Ayah Range)</h2>
+                    
+                    <div class="p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
+                        <p class="text-sm text-gray-600 mb-5 font-medium">Enter the exact Surah and Ayah range the student memorized today. Progress is calculated based on the difference from their current memorization level.</p>
+                        
+                        <!-- LOGGING INPUTS: START RANGE -->
+                        <div class="log-group mb-4">
+                            <h3 class="text-lg font-bold text-blue-800 mb-3 border-b pb-2">Starting Point</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="session-start-surah" class="block text-xs font-medium text-gray-700 mb-1">Surah (From):</label>
+                                    <select id="session-start-surah" class="action-input">
+                                        <!-- Options populated by JS -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="session-start-verse" class="block text-xs font-medium text-gray-700 mb-1">Ayah (From):</label>
+                                    <input type="number" id="session-start-verse" min="1" value="1" class="action-input text-center font-mono">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- LOGGING INPUTS: END RANGE -->
+                        <div class="log-group">
+                            <h3 class="text-lg font-bold text-blue-800 mb-3 border-b pb-2">Ending Point</h3>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="session-end-surah" class="block text-xs font-medium text-gray-700 mb-1">Surah (To):</label>
+                                    <select id="session-end-surah" class="action-input">
+                                        <!-- Options populated by JS -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="session-end-verse" class="block text-xs font-medium text-gray-700 mb-1">Ayah (To):</label>
+                                    <input type="number" id="session-end-verse" min="1" value="1" class="action-input text-center font-mono">
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <!-- LOG BUTTON -->
+                        <button id="log-session-btn" class="mt-6 w-full bg-blue-600 text-white py-4 px-4 rounded-xl hover:bg-blue-700 transition duration-150 shadow-xl text-lg font-semibold transform hover:scale-[1.01]">
+                            Log Memorization Range
+                        </button>
+                        <p id="log-message" class="text-center mt-3 text-sm font-medium hidden"></p>
+                    </div>
+                </section>
+                
+                <!-- 3. GOAL SETTING & PACE DASHBOARD -->
+                <section class="mb-10 border-b pb-6">
+                    <h2 class="text-xl md:text-2xl font-bold text-green-700 mb-6">3. Set Goal & Projected Pace Dashboard</h2>
+                    
+                    <!-- Goal Configuration -->
+                    <div class="p-6 bg-green-50 rounded-xl border-2 border-green-200">
+                        
+                        <!-- Configuration Setting -->
+                        <div class="mb-6 pb-4 border-b border-green-200">
+                            <h3 class="text-base font-semibold text-gray-700 mb-2">Global Settings:</h3>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label for="total-quran-pages" class="block text-xs font-medium text-gray-700">Total Pages in Your Mushaf:</label>
+                                    <input type="number" id="total-quran-pages" min="1" value="604" class="action-input text-center font-mono">
+                                    <p class="text-xs text-gray-500 mt-1">Standard 15-line Mushaf uses 604 pages.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Goal Mode Selector -->
+                        <h3 class="text-base font-semibold text-gray-700 mb-3">Choose Goal Type:</h3>
+                        <div class="flex flex-wrap space-x-2 mb-6">
+                            <button id="mode-date" data-mode="date" class="goal-mode-btn goal-mode-active">
+                                🎯 Target Date (Top-Down)
+                            </button>
+                            <button id="mode-pages" data-mode="pages" class="goal-mode-btn">
+                                🗓️ Daily Pages (Rate-Based)
+                            </button>
+                            <button id="mode-weekly_verses" data-mode="weekly_verses" class="goal-mode-btn">
+                                📈 Weekly Rate (Verses/Pages)
+                            </button>
+                        </div>
+
+                        <!-- Goal Input Containers (Mode-Specific) -->
+                        
+                        <!-- MODE 1: Target Date (Existing Logic) -->
+                        <div id="goal-input-date" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="col-span-2">
+                                <label for="target-surah" class="block text-xs font-medium text-gray-700">Target Surah (Up To):</label>
+                                <select id="target-surah" class="action-input">
+                                    <!-- Options filled by JS -->
+                                </select>
+                            </div>
+                            <div>
+                                <label for="target-verse" class="block text-xs font-medium text-gray-700">Target Verse:</label>
+                                <input type="number" id="target-verse" min="1" value="1" class="action-input text-center font-mono">
+                            </div>
+                            <div>
+                                <label for="target-date" class="block text-xs font-medium text-gray-700">Target Completion Date:</label>
+                                <input type="date" id="target-date" class="action-input">
+                            </div>
+                            <div class="flex items-end col-span-2 md:col-span-1">
+                                <button id="save-goal-date-btn" class="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 transition duration-150 shadow-md font-semibold">
+                                    Set Date Goal
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- MODE 2: Pages Per Day -->
+                        <div id="goal-input-pages" class="hidden grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="col-span-2 md:col-span-2">
+                                <label for="pages-per-day" class="block text-xs font-medium text-gray-700">Pages Memorized Per Day:</label>
+                                <input type="number" id="pages-per-day" min="0.1" step="0.1" value="1.0" class="action-input text-center font-mono">
+                                <p class="text-xs text-gray-500 mt-1">Use 0.5 for half a page, 1 for one page.</p>
+                            </div>
+                            <div class="col-span-2 md:col-span-2">
+                                <label class="block text-xs font-medium text-gray-700 invisible">Placeholder</label>
+                                <div class="action-input bg-gray-100 text-gray-600 text-sm flex items-center h-[42px] px-3">
+                                    Calculates End Date for **Whole Quran**
+                                </div>
+                            </div>
+                            <div class="flex items-end col-span-2 md:col-span-1">
+                                <button id="save-goal-pages-btn" class="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 transition duration-150 shadow-md font-semibold">
+                                    Set Rate Goal
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- MODE 3: Verses/Pages Per Week -->
+                        <div id="goal-input-weekly_verses" class="hidden grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="col-span-2 md:col-span-2">
+                                <label for="weekly-rate-value" class="block text-xs font-medium text-gray-700">Weekly Goal Amount:</label>
+                                <div class="flex">
+                                    <!-- Input for the number of verses/pages -->
+                                    <input type="number" id="weekly-rate-value" min="1" step="1" value="50" class="action-input flex-grow mt-0 text-center font-mono">
+                                    <!-- Selector for the unit (Verses or Pages) -->
+                                    <select id="weekly-rate-unit" class="action-input w-1/3 ml-2 mt-0">
+                                        <option value="verses">Verses</option>
+                                        <option value="pages">Pages</option>
+                                    </select>
+                                </div>
+                                <p id="weekly-rate-hint" class="text-xs text-gray-500 mt-1">The student's weekly goal in selected units.</p>
+                            </div>
+                            <div class="col-span-2 md:col-span-2">
+                                <label class="block text-xs font-medium text-gray-700 invisible">Placeholder</label>
+                                <div class="action-input bg-gray-100 text-gray-600 text-sm flex items-center h-[42px] px-3">
+                                    Calculates End Date for **Whole Quran**
+                                </div>
+                            </div>
+                            <div class="flex items-end col-span-2 md:col-span-1">
+                                <button id="save-goal-weekly-btn" class="w-full bg-green-600 text-white py-2.5 px-4 rounded-lg hover:bg-green-700 transition duration-150 shadow-md font-semibold">
+                                    Set Rate Goal
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Goal Summary Dashboard -->
+                    <div id="goal-summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
+                        <div class="metric-card">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Verses Remaining</p>
+                            <p id="remaining-verses" class="text-xl md:text-2xl font-extrabold text-red-600 mt-1">--</p>
+                        </div>
+                        <div class="metric-card">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Daily Rate</p>
+                            <p id="daily-target" class="text-xl md:text-2xl font-extrabold text-blue-600 mt-1">--</p>
+                        </div>
+                        <div class="metric-card">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Projected Completion</p>
+                            <p id="projected-completion-date" class="text-base md:text-xl font-bold text-green-600 mt-1 truncate">--</p>
+                        </div>
+                        <div class="metric-card">
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Goal Target</p>
+                            <p id="actual-pace" class="text-base md:text-xl font-bold text-gray-600 mt-1 truncate">--</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- 4. DAILY PROGRESS HISTORY (NEW SECTION) -->
+                <section class="mb-10 pb-6 border-b">
+                    <h2 class="text-xl md:text-2xl font-bold text-teal-700 mb-4">4. Daily Progress History</h2>
+                    <p class="text-gray-600 mb-4">A record of verses added in each session, grouped by date.</p>
+                    <div class="overflow-x-auto shadow-xl rounded-lg border border-gray-200">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-teal-100">
+                                <tr>
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Date</th>
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Verses Added (Net)</th>
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Range Covered (To End)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-log-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Daily log rows will be dynamically inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 5. SURAH PROGRESS TABLE -->
+                <h2 class="text-xl md:text-2xl font-bold text-green-700 mb-4 mt-8">5. Detailed Memorization Progress</h2>
+                <div class="overflow-x-auto shadow-xl rounded-lg border border-gray-200">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-green-100">
+                            <tr>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">#</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Surah Name</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hide-on-mobile">Total Verses</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Progress</th>
+                                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider hide-on-mobile">Completion %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="progress-table-body" class="bg-white divide-y divide-gray-200">
+                            <!-- Surah rows will be dynamically inserted here -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
-
-        <!-- Dynamic Dashboard Content -->
-        <div id="dashboard-content"></div>
     </div>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase SDK Imports -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, query, where, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        setLogLevel('debug'); // Enable debug logging for Firestore
 
-        const loadingSpinner = document.getElementById('loading-spinner');
-        const mainContent = document.getElementById('main-content');
-        const roleModal = document.getElementById('role-modal');
-        const dashboardContent = document.getElementById('dashboard-content');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const statusMessageEl = document.getElementById('status-message');
-        const logoutBtn = document.getElementById('logout-btn');
+        // Set Firebase log level (optional, but good for debugging)
+        setLogLevel('Debug');
 
-        // Global variables provided by the Canvas environment
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- USER'S FIREBASE CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAYvplMH3E7ZSeO0O2W9SPTKzrLlpHkqVM",
+            authDomain: "quranprogresstracker.firebaseapp.com",
+            projectId: "quranprogresstracker",
+            storageBucket: "quranprogresstracker.firebasestorage.app",
+            messagingSenderId: "68796688040",
+            appId: "1:68796688040:web:b1c967a24a2d0b36fd049d",
+            measurementId: "G-RR93NV0PEQ"
+        };
+        // --- END OF USER CONFIGURATION ---
 
-        // Firebase Initialization
-        let app, db, auth;
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-        } catch (e) {
-            showMessage('error', 'Firebase initialization failed. Check your configuration.');
-            console.error('Firebase initialization error:', e);
-            loadingSpinner.classList.add('hidden');
+
+        // --- CORE FIREBASE SETUP ---
+        let app;
+        let db;
+        let auth;
+        let userId = null;
+        // Collections structure will be: users/{userId}/students/{studentId}
+        const USER_COLLECTION = 'users'; 
+        const STUDENT_SUBCOLLECTION = 'students'; 
+
+        // --- MULTI-STUDENT STATE ---
+        let students = []; 
+        let selectedStudentId = null; 
+        let selectedStudentDocRef = null;
+        let studentDocUnsubscribe = null; 
+
+        // --- CORE DATA & CONSTANTS ---
+        let memorizationProgress = []; 
+        let dailyLogs = []; 
+        
+        let currentGoal = {
+            mode: 'date', 
+            targetSurahId: 114,
+            targetVerse: 6,
+            targetDate: null,
+            pagesPerDay: 1.0,
+            weeklyRateValue: 50, 
+            weeklyRateUnit: 'verses', 
+            totalQuranPages: 604
+        }; 
+
+        // Utility to generate the correct Firestore path
+        function getStudentCollectionPath(uid) {
+            if (!uid) {
+                console.error("Attempted to get collection path without a valid user ID.");
+                return null;
+            }
+            return `${USER_COLLECTION}/${uid}/${STUDENT_SUBCOLLECTION}`;
         }
 
-        // --- Authentication & Role Management ---
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const userId = user.uid;
-                userIdDisplay.textContent = userId;
+        // RESTORED: FULL LIST OF 114 SURAHS (Same as previous version)
+        const initialQuranData = [
+            { id: 1, name: "Al-Fatihah", arabicName: "الفاتحة", verses: 7, versesMemorized: 0 },
+            { id: 2, name: "Al-Baqarah", arabicName: "البقرة", verses: 286, versesMemorized: 0 },
+            { id: 3, name: "Al-Imran", arabicName: "آل عمران", verses: 200, versesMemorized: 0 },
+            { id: 4, name: "An-Nisa", arabicName: "النساء", verses: 176, versesMemorized: 0 },
+            { id: 5, name: "Al-Ma'idah", arabicName: "المائدة", verses: 120, versesMemorized: 0 },
+            { id: 6, name: "Al-An'am", arabicName: "الأنعام", verses: 165, versesMemorized: 0 },
+            { id: 7, name: "Al-A'raf", arabicName: "الأعراف", verses: 206, versesMemorized: 0 },
+            { id: 8, name: "Al-Anfal", arabicName: "الأنفال", verses: 75, versesMemorized: 0 },
+            { id: 9, name: "At-Tawbah", arabicName: "التوبة", verses: 129, versesMemorized: 0 },
+            { id: 10, name: "Yunus", arabicName: "يونس", verses: 109, versesMemorized: 0 },
+            { id: 11, name: "Hud", arabicName: "هود", verses: 123, versesMemorized: 0 },
+            { id: 12, name: "Yusuf", arabicName: "يوسف", verses: 111, versesMemorized: 0 },
+            { id: 13, name: "Ar-Ra'd", arabicName: "الرعد", verses: 43, versesMemorized: 0 },
+            { id: 14, name: "Ibrahim", arabicName: "ابراهيم", verses: 52, versesMemorized: 0 },
+            { id: 15, name: "Al-Hijr", arabicName: "الحجر", verses: 99, versesMemorized: 0 },
+            { id: 16, name: "An-Nahl", arabicName: "النحل", verses: 128, versesMemorized: 0 },
+            { id: 17, name: "Al-Isra", arabicName: "الإسراء", verses: 111, versesMemorized: 0 },
+            { id: 18, name: "Al-Kahf", arabicName: "الكهف", verses: 110, versesMemorized: 0 },
+            { id: 19, name: "Maryam", arabicName: "مريم", verses: 98, versesMemorized: 0 },
+            { id: 20, name: "Taha", arabicName: "طه", verses: 135, versesMemorized: 0 },
+            { id: 21, name: "Al-Anbiya", arabicName: "الأنبياء", verses: 112, versesMemorized: 0 },
+            { id: 22, name: "Al-Hajj", arabicName: "الحج", verses: 78, versesMemorized: 0 },
+            { id: 23, name: "Al-Mu'minun", arabicName: "المؤمنون", verses: 118, versesMemorized: 0 },
+            { id: 24, name: "An-Nur", arabicName: "النور", verses: 64, versesMemorized: 0 },
+            { id: 25, name: "Al-Furqan", arabicName: "الفرقان", verses: 77, versesMemorized: 0 },
+            { id: 26, name: "Ash-Shu'ara", arabicName: "الشعراء", verses: 227, versesMemorized: 0 },
+            { id: 27, name: "An-Naml", arabicName: "النمل", verses: 93, versesMemorized: 0 },
+            { id: 28, name: "Al-Qasas", arabicName: "القصص", verses: 88, versesMemorized: 0 },
+            { id: 29, name: "Al-Ankabut", arabicName: "العنكبوت", verses: 69, versesMemorized: 0 },
+            { id: 30, name: "Ar-Rum", arabicName: "الروم", verses: 60, versesMemorized: 0 },
+            { id: 31, name: "Luqman", arabicName: "لقمان", verses: 34, versesMemorized: 0 },
+            { id: 32, name: "As-Sajdah", arabicName: "السجدة", verses: 30, versesMemorized: 0 },
+            { id: 33, name: "Al-Ahzab", arabicName: "الأحزاب", verses: 73, versesMemorized: 0 },
+            { id: 34, name: "Saba", arabicName: "سبأ", verses: 54, versesMemorized: 0 },
+            { id: 35, name: "Fatir", arabicName: "فاطر", verses: 45, versesMemorized: 0 },
+            { id: 36, name: "Ya-Sin", arabicName: "يس", verses: 83, versesMemorized: 0 },
+            { id: 37, name: "As-Saffat", arabicName: "الصافات", verses: 182, versesMemorized: 0 },
+            { id: 38, name: "Sad", arabicName: "ص", verses: 88, versesMemorized: 0 },
+            { id: 39, name: "Az-Zumar", arabicName: "الزمر", verses: 75, versesMemorized: 0 },
+            { id: 40, name: "Ghafir", arabicName: "غافر", verses: 85, versesMemorized: 0 },
+            { id: 41, name: "Fussilat", arabicName: "فصلت", verses: 54, versesMemorized: 0 },
+            { id: 42, name: "Ash-Shura", arabicName: "الشورى", verses: 53, versesMemorized: 0 },
+            { id: 43, name: "Az-Zukhruf", arabicName: "الزخرف", verses: 89, versesMemorized: 0 },
+            { id: 44, name: "Ad-Dukhan", arabicName: "الدخان", verses: 59, versesMemorized: 0 },
+            { id: 45, name: "Al-Jathiyah", arabicName: "الجاثية", verses: 37, versesMemorized: 0 },
+            { id: 46, name: "Al-Ahqaf", arabicName: "الأحقاف", verses: 35, versesMemorized: 0 },
+            { id: 47, name: "Muhammad", arabicName: "محمد", verses: 38, versesMemorized: 0 },
+            { id: 48, name: "Al-Fath", arabicName: "الفتح", verses: 29, versesMemorized: 0 },
+            { id: 49, name: "Al-Hujurat", arabicName: "الحجرات", verses: 18, versesMemorized: 0 },
+            { id: 50, name: "Qaf", arabicName: "ق", verses: 45, versesMemorized: 0 },
+            { id: 51, name: "Adh-Dhariyat", arabicName: "الذاريات", verses: 60, versesMemorized: 0 },
+            { id: 52, name: "At-Tur", arabicName: "الطور", verses: 49, versesMemorized: 0 },
+            { id: 53, name: "An-Najm", arabicName: "النجم", verses: 62, versesMemorized: 0 },
+            { id: 54, name: "Al-Qamar", arabicName: "القمر", verses: 55, versesMemorized: 0 },
+            { id: 55, name: "Ar-Rahman", arabicName: "الرحمن", verses: 78, versesMemorized: 0 },
+            { id: 56, name: "Al-Waqi'ah", arabicName: "الواقعة", verses: 96, versesMemorized: 0 },
+            { id: 57, name: "Al-Hadid", arabicName: "الحديد", verses: 29, versesMemorized: 0 },
+            { id: 58, name: "Al-Mujadilah", arabicName: "المجادلة", verses: 22, versesMemorized: 0 },
+            { id: 59, name: "Al-Hashr", arabicName: "الحشر", verses: 24, versesMemorized: 0 },
+            { id: 60, name: "Al-Mumtahanah", arabicName: "الممتحنة", verses: 13, versesMemorized: 0 },
+            { id: 61, name: "As-Saff", arabicName: "الصف", verses: 14, versesMemorized: 0 },
+            { id: 62, name: "Al-Jumu'ah", arabicName: "الجمعة", verses: 11, versesMemorized: 0 },
+            { id: 63, name: "Al-Munafiqun", arabicName: "المنافقون", verses: 11, versesMemorized: 0 },
+            { id: 64, name: "At-Taghabun", arabicName: "التغابن", verses: 18, versesMemorized: 0 },
+            { id: 65, name: "At-Talaq", arabicName: "الطلاق", verses: 12, versesMemorized: 0 },
+            { id: 66, name: "At-Tahrim", arabicName: "التحريم", verses: 12, versesMemorized: 0 },
+            { id: 67, name: "Al-Mulk", arabicName: "الملك", verses: 30, versesMemorized: 0 },
+            { id: 68, name: "Al-Qalam", arabicName: "القلم", verses: 52, versesMemorized: 0 },
+            { id: 69, name: "Al-Haqqah", arabicName: "الحاقة", verses: 52, versesMemorized: 0 },
+            { id: 70, name: "Al-Ma'arij", arabicName: "المعارج", verses: 44, versesMemorized: 0 },
+            { id: 71, name: "Nuh", arabicName: "نوح", verses: 28, versesMemorized: 0 },
+            { id: 72, name: "Al-Jinn", arabicName: "الجن", verses: 28, versesMemorized: 0 },
+            { id: 73, name: "Al-Muzzammil", arabicName: "المزمل", verses: 20, versesMemorized: 0 },
+            { id: 74, name: "Al-Muddaththir", arabicName: "المدثر", verses: 56, versesMemorized: 0 },
+            { id: 75, name: "Al-Qiyamah", arabicName: "القيامة", verses: 40, versesMemorized: 0 },
+            { id: 76, name: "Al-Insan", arabicName: "الإنسان", verses: 31, versesMemorized: 0 },
+            { id: 77, name: "Al-Mursalat", arabicName: "المرسلات", verses: 50, versesMemorized: 0 },
+            { id: 78, name: "An-Naba", arabicName: "النبأ", verses: 40, versesMemorized: 0 },
+            { id: 79, name: "An-Nazi'at", arabicName: "النازعات", verses: 46, versesMemorized: 0 },
+            { id: 80, name: "Abasa", arabicName: "عبس", verses: 42, versesMemorized: 0 },
+            { id: 81, name: "At-Takwir", arabicName: "التكوير", verses: 29, versesMemorized: 0 },
+            { id: 82, name: "Al-Infitar", arabicName: "الإنفطار", verses: 19, versesMemorized: 0 },
+            { id: 83, name: "Al-Mutaffifin", arabicName: "المطففين", verses: 36, versesMemorized: 0 },
+            { id: 84, name: "Al-Inshiqaq", arabicName: "الإنشقاق", verses: 25, versesMemorized: 0 },
+            { id: 85, name: "Al-Buruj", arabicName: "البروج", verses: 22, versesMemorized: 0 },
+            { id: 86, name: "At-Tariq", arabicName: "الطارق", verses: 17, versesMemorized: 0 },
+            { id: 87, name: "Al-A'la", arabicName: "الأعلى", verses: 19, versesMemorized: 0 },
+            { id: 88, name: "Al-Ghashiyah", arabicName: "الغاشية", verses: 26, versesMemorized: 0 },
+            { id: 89, name: "Al-Fajr", arabicName: "الفجر", verses: 30, versesMemorized: 0 },
+            { id: 90, name: "Al-Balad", arabicName: "البلد", verses: 20, versesMemorized: 0 },
+            { id: 91, name: "Ash-Shams", arabicName: "الشمس", verses: 15, versesMemorized: 0 },
+            { id: 92, name: "Al-Layl", arabicName: "الليل", verses: 21, versesMemorized: 0 },
+            { id: 93, name: "Ad-Duha", arabicName: "الضحى", verses: 11, versesMemorized: 0 },
+            { id: 94, name: "Ash-Sharh", arabicName: "الشرح", verses: 8, versesMemorized: 0 },
+            { id: 95, name: "At-Tin", arabicName: "التين", verses: 8, versesMemorized: 0 },
+            { id: 96, name: "Al-Alaq", arabicName: "العلق", verses: 19, versesMemorized: 0 },
+            { id: 97, name: "Al-Qadr", arabicName: "القدر", verses: 5, versesMemorized: 0 },
+            { id: 98, name: "Al-Bayyinah", arabicName: "البينة", verses: 8, versesMemorized: 0 },
+            { id: 99, name: "Az-Zalzalah", arabicName: "الزلزلة", verses: 8, versesMemorized: 0 },
+            { id: 100, name: "Al-Adiyat", arabicName: "العاديات", verses: 11, versesMemorized: 0 },
+            { id: 101, name: "Al-Qari'ah", arabicName: "القارعة", verses: 11, versesMemorized: 0 },
+            { id: 102, name: "At-Takathur", arabicName: "التكاثر", verses: 8, versesMemorized: 0 },
+            { id: 103, name: "Al-Asr", arabicName: "العصر", verses: 3, versesMemorized: 0 },
+            { id: 104, name: "Al-Humazah", arabicName: "الهمزة", verses: 9, versesMemorized: 0 },
+            { id: 105, name: "Al-Fil", arabicName: "الفيل", verses: 5, versesMemorized: 0 },
+            { id: 106, name: "Quraish", arabicName: "قريش", verses: 4, versesMemorized: 0 },
+            { id: 107, name: "Al-Ma'un", arabicName: "الماعون", verses: 7, versesMemorized: 0 },
+            { id: 108, name: "Al-Kauthar", arabicName: "الكوثر", verses: 3, versesMemorized: 0 },
+            { id: 109, name: "Al-Kafirun", arabicName: "الكافرون", verses: 6, versesMemorized: 0 },
+            { id: 110, name: "An-Nasr", arabicName: "النصر", verses: 3, versesMemorized: 0 },
+            { id: 111, name: "Al-Masad", arabicName: "المسد", verses: 5, versesMemorized: 0 },
+            { id: 112, name: "Al-Ikhlas", arabicName: "الإخلاص", verses: 4, versesMemorized: 0 },
+            { id: 113, name: "Al-Falaq", arabicName: "الفلق", verses: 5, versesMemorized: 0 },
+            { id: 114, name: "An-Nas", arabicName: "الناس", verses: 6, versesMemorized: 0 },
+        ];
 
-                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile/info`);
-                const userDocSnap = await getDoc(userDocRef);
+        const surahMap = {};
+        let runningTotal = 0;
+        initialQuranData.forEach(surah => {
+            runningTotal += surah.verses;
+            surahMap[surah.id] = surah;
+        });
+        const totalQuranVerses = runningTotal; 
 
-                if (userDocSnap.exists() && userDocSnap.data().role) {
-                    const { role } = userDocSnap.data();
-                    renderDashboard(role, userId);
-                } else {
-                    roleModal.classList.remove('hidden');
-                }
-            } else {
-                // Not authenticated, sign in with custom token or anonymously
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken).catch(e => {
-                        console.error('Custom token sign-in failed:', e);
-                        signInAnonymously(auth);
-                    });
-                } else {
-                    await signInAnonymously(auth);
+
+        // --- CORE DATA UTILITIES (Functions remain the same as previous version) ---
+
+        function getTotalMemorizedVerses() {
+            return memorizationProgress.reduce((total, surah) => total + surah.versesMemorized, 0);
+        }
+
+        function getCumulativeVerseCount(targetSurahId, targetVerse) {
+            targetSurahId = parseInt(targetSurahId);
+            targetVerse = parseInt(targetVerse);
+
+            if (targetSurahId < 1 || targetVerse < 1) return 0;
+            if (targetSurahId > 114) return totalQuranVerses;
+
+            let totalVerses = 0;
+            for (let id = 1; id < targetSurahId; id++) {
+                totalVerses += surahMap[id]?.verses || 0;
+            }
+            const surahVerseMax = surahMap[targetSurahId]?.verses || 0;
+            totalVerses += Math.min(targetVerse, surahVerseMax);
+            
+            return totalVerses;
+        }
+
+        // --- UI/INPUT CONTROL LOGIC (Functions remain the same as previous version) ---
+
+        function updateGoalVerseMax() { 
+            const targetSurahId = parseInt(document.getElementById('target-surah').value);
+            const targetVerseInput = document.getElementById('target-verse');
+            
+            const selectedSurah = surahMap[targetSurahId];
+            if (selectedSurah) {
+                targetVerseInput.max = selectedSurah.verses;
+                targetVerseInput.min = 1;
+                if (parseInt(targetVerseInput.value) > selectedSurah.verses) {
+                    targetVerseInput.value = selectedSurah.verses;
                 }
             }
-            loadingSpinner.classList.add('hidden');
-            mainContent.classList.remove('hidden');
-        });
+        }
+        
+        function updateSessionVerseMax(event) {
+            const targetId = event ? event.target.id : 'session-start-surah'; 
+            
+            let surahId, verseInputId;
 
-        // Event listeners for role selection
-        document.getElementById('role-admin-btn').addEventListener('click', () => saveRole('admin'));
-        document.getElementById('role-teacher-btn').addEventListener('click', () => saveRole('teacher'));
-        document.getElementById('role-student-btn').addEventListener('click', () => saveRole('student'));
+            if (targetId.includes('start-surah')) {
+                surahId = parseInt(document.getElementById('session-start-surah').value);
+                verseInputId = 'session-start-verse';
+            } else if (targetId.includes('end-surah')) {
+                surahId = parseInt(document.getElementById('session-end-surah').value);
+                verseInputId = 'session-end-verse';
+            } else {
+                return;
+            }
 
-        async function saveRole(role) {
+            const verseInput = document.getElementById(verseInputId);
+            const selectedSurah = surahMap[surahId];
+
+            if (selectedSurah) {
+                verseInput.max = selectedSurah.verses;
+                verseInput.min = 1;
+                if (parseInt(verseInput.value) > selectedSurah.verses) {
+                    verseInput.value = selectedSurah.verses;
+                }
+            }
+        }
+
+        function switchGoalMode(mode) {
+            currentGoal.mode = mode;
+            const modes = ['date', 'pages', 'weekly_verses'];
+            
+            modes.forEach(m => {
+                const inputDiv = document.getElementById(`goal-input-${m}`); 
+                const modeBtn = document.getElementById(`mode-${m}`);
+                
+                if (inputDiv) {
+                    inputDiv.classList.toggle('hidden', m !== mode); 
+                }
+                if (modeBtn) {
+                    modeBtn.classList.toggle('goal-mode-active', m === mode);
+                }
+            });
+            
+            calculateProjection();
+        }
+
+
+        // --- GOAL LOGIC (Functions remain the same as previous version) ---
+
+        function calculateProjection() {
+            if (!selectedStudentId) return;
+
+            const totalMemorized = getTotalMemorizedVerses();
+            const totalPages = parseFloat(currentGoal.totalQuranPages);
+            const versesPerPage = totalQuranVerses / totalPages;
+            
+            let remainingVerses = Math.max(0, totalQuranVerses - totalMemorized);
+            
+            let dailyRate = 0;
+            let projectionText = 'N/A';
+            let targetText = 'N/A';
+            
+            document.getElementById('remaining-verses').textContent = remainingVerses.toLocaleString();
+
+            if (remainingVerses === 0) {
+                document.getElementById('daily-target').textContent = '0';
+                document.getElementById('projected-completion-date').textContent = 'Quran Completed!';
+                document.getElementById('actual-pace').textContent = '100% Complete';
+                return;
+            }
+
+
+            if (currentGoal.mode === 'date') {
+                const versesInGoalRange = getCumulativeVerseCount(currentGoal.targetSurahId, currentGoal.targetVerse);
+                const versesAlreadyReached = totalMemorized;
+                
+                const goalRemainingVerses = Math.max(0, versesInGoalRange - versesAlreadyReached);
+                
+                document.getElementById('remaining-verses').textContent = goalRemainingVerses.toLocaleString(); 
+
+                const targetDate = currentGoal.targetDate ? new Date(currentGoal.targetDate) : null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); 
+
+                if (!targetDate || targetDate < today) {
+                    dailyRate = 0;
+                    projectionText = 'Invalid Target Date';
+                } else {
+                    const timeRemainingMs = targetDate.getTime() - today.getTime();
+                    const remainingDays = Math.max(1, Math.floor(timeRemainingMs / (1000 * 60 * 60 * 24)) + 1); 
+                    dailyRate = goalRemainingVerses / remainingDays;
+
+                    projectionText = targetDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                }
+
+                const targetSurahName = surahMap[currentGoal.targetSurahId]?.name || 'Goal Surah';
+                targetText = `${targetSurahName}:${currentGoal.targetVerse} by ${projectionText}`;
+
+            } 
+            else if (currentGoal.mode === 'pages') {
+                document.getElementById('remaining-verses').textContent = remainingVerses.toLocaleString(); 
+                
+                const pagesPerDay = parseFloat(currentGoal.pagesPerDay);
+                
+                dailyRate = pagesPerDay * versesPerPage;
+                targetText = `${currentGoal.pagesPerDay} pages/day`;
+
+            } 
+            else if (currentGoal.mode === 'weekly_verses') {
+                document.getElementById('remaining-verses').textContent = remainingVerses.toLocaleString(); 
+                
+                const weeklyRateValue = parseFloat(currentGoal.weeklyRateValue);
+                const weeklyRateUnit = currentGoal.weeklyRateUnit;
+                
+                if (weeklyRateUnit === 'pages') {
+                    dailyRate = (weeklyRateValue * versesPerPage) / 7; 
+                    targetText = `${weeklyRateValue} pages/week`;
+                } else { 
+                    dailyRate = weeklyRateValue / 7; 
+                    targetText = `${weeklyRateValue} verses/week`;
+                }
+            }
+
+            if (currentGoal.mode === 'pages' || currentGoal.mode === 'weekly_verses') {
+                if (dailyRate > 0) {
+                    const daysToFinish = remainingVerses / dailyRate;
+                    const finishDate = new Date();
+                    finishDate.setDate(finishDate.getDate() + daysToFinish);
+                    projectionText = finishDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                } else {
+                    projectionText = 'Rate cannot be 0';
+                }
+            }
+
+            if (dailyRate > 0) {
+                document.getElementById('daily-target').textContent = `${dailyRate.toFixed(2)} verses`;
+            } else {
+                document.getElementById('daily-target').textContent = '--';
+            }
+
+            document.getElementById('projected-completion-date').textContent = projectionText;
+            document.getElementById('actual-pace').textContent = targetText;
+        }
+
+        async function saveGoal(mode) {
+            if (!selectedStudentDocRef || !userId) {
+                showLogMessage("Please select a student first.", true);
+                return;
+            }
+
+            let newGoal = { mode: mode };
+            const studentName = document.getElementById('current-student-name').textContent;
+            let successMessage = `Goal mode set to **${mode.replace('_', ' ')}** for ${studentName}.`;
+            let isValid = true;
+
+            const totalPagesInput = document.getElementById('total-quran-pages');
+            const totalQuranPages = parseInt(totalPagesInput.value);
+            if (isNaN(totalQuranPages) || totalQuranPages < 100) {
+                 showLogMessage("Please set a valid number of Total Quran Pages (e.g., 604).", true);
+                 return;
+            }
+            newGoal.totalQuranPages = totalQuranPages;
+
+
+            if (mode === 'date') {
+                const targetSurahElement = document.getElementById('target-surah');
+                const targetVerseElement = document.getElementById('target-verse');
+                const targetDateElement = document.getElementById('target-date');
+                
+                const targetSurahId = parseInt(targetSurahElement.value);
+                const targetVerse = parseInt(targetVerseElement.value);
+                const targetDate = targetDateElement.value;
+
+                const maxVerse = surahMap[targetSurahId]?.verses || 1;
+
+                if (!targetDate || isNaN(targetSurahId) || isNaN(targetVerse) || targetVerse < 1 || targetVerse > maxVerse) {
+                    showLogMessage(`Please set a valid Target Surah, Verse (1 to ${maxVerse}) and Date.`, true);
+                    isValid = false;
+                } else {
+                    newGoal = {
+                        ...newGoal,
+                        targetSurahId: targetSurahId,
+                        targetVerse: targetVerse,
+                        targetDate: targetDate
+                    };
+                    successMessage = `Target Date goal updated for ${studentName}.`;
+                }
+
+            } else if (mode === 'pages') {
+                const pagesPerDay = parseFloat(document.getElementById('pages-per-day').value);
+                if (isNaN(pagesPerDay) || pagesPerDay <= 0) {
+                    showLogMessage("Pages Per Day must be a positive number.", true);
+                    isValid = false;
+                } else {
+                    newGoal.pagesPerDay = pagesPerDay;
+                    successMessage = `Daily Rate goal updated for ${studentName}.`;
+                }
+            } else if (mode === 'weekly_verses') { 
+                const weeklyRateValue = parseFloat(document.getElementById('weekly-rate-value').value);
+                const weeklyRateUnit = document.getElementById('weekly-rate-unit').value;
+                
+                if (isNaN(weeklyRateValue) || weeklyRateValue <= 0) {
+                    showLogMessage("Weekly goal amount must be a positive number.", true);
+                    isValid = false;
+                } else if (weeklyRateUnit !== 'verses' && weeklyRateUnit !== 'pages') {
+                     showLogMessage("Please select a valid unit (Verses or Pages).", true);
+                     isValid = false;
+                }
+                
+                if (isValid) {
+                    newGoal.weeklyRateValue = weeklyRateValue;
+                    newGoal.weeklyRateUnit = weeklyRateUnit;
+                    successMessage = `Weekly Rate goal updated for ${studentName}: ${weeklyRateValue} ${weeklyRateUnit}/week.`;
+                }
+            }
+
+            if (!isValid) return;
+            
+            currentGoal = { ...currentGoal, ...newGoal };
+            calculateProjection(); 
+
             try {
-                const userId = auth.currentUser.uid;
-                const userDocRef = doc(db, `artifacts/${appId}/users/${userId}/profile/info`);
-                await setDoc(userDocRef, { role, created: new Date().toISOString() });
-                roleModal.classList.add('hidden');
-                showMessage('success', `Role "${role}" saved successfully. Redirecting...`);
-                renderDashboard(role, userId);
-            } catch (e) {
-                showMessage('error', `Failed to save role: ${e.message}`);
-                console.error("Error saving role: ", e);
+                await setDoc(selectedStudentDocRef, { goal: currentGoal }, { merge: true });
+                showLogMessage(successMessage, false);
+            } catch (error) {
+                console.error("Error saving goal to Firestore:", error);
+                showLogMessage("Error saving goal.", true);
             }
         }
 
-        logoutBtn.addEventListener('click', async () => {
-            await signOut(auth);
-            window.location.reload();
-        });
+        // --- SESSION LOGIC (Functions remain the same as previous version) ---
 
-        // --- Dashboard Rendering ---
-        function renderDashboard(role, userId) {
-            dashboardContent.innerHTML = '';
-            let content;
-            switch (role) {
-                case 'admin':
-                    content = createAdminDashboard(userId);
-                    break;
-                case 'teacher':
-                    content = createTeacherDashboard(userId);
-                    break;
-                case 'student':
-                    content = createStudentDashboard(userId);
-                    break;
-                default:
-                    content = '<p class="text-center text-red-500">Invalid role.</p>';
-                    break;
-            }
-            dashboardContent.innerHTML = content;
-            setupDashboardListeners(role, userId);
+        function showLogMessage(message, isError = false) {
+            const logMsg = document.getElementById('log-message');
+            logMsg.textContent = message;
+            logMsg.className = `text-center mt-3 text-sm font-medium ${isError ? 'text-red-600' : 'text-blue-600'}`;
+            logMsg.classList.remove('hidden');
+            setTimeout(() => logMsg.classList.add('hidden'), 5000);
         }
 
-        // --- Dashboard HTML Generation ---
-        function createAdminDashboard() {
-            return `
-                <div id="admin-dashboard" class="space-y-8">
-                    <h2 class="text-2xl font-bold text-gray-800">Admin Dashboard</h2>
+        async function logSession() {
+            if (!selectedStudentDocRef || !userId) {
+                showLogMessage("Error: Please select a student first.", true);
+                return;
+            }
+
+            const startSurahId = parseInt(document.getElementById('session-start-surah').value);
+            const startAyah = parseInt(document.getElementById('session-start-verse').value);
+            const endSurahId = parseInt(document.getElementById('session-end-surah').value);
+            const endAyah = parseInt(document.getElementById('session-end-verse').value);
+
+            if (isNaN(startSurahId) || isNaN(startAyah) || isNaN(endSurahId) || isNaN(endAyah) || startAyah < 1 || endAyah < 1) {
+                showLogMessage("Please ensure all Surah and Ayah fields are valid numbers.", true);
+                return;
+            }
+
+            const startSurah = surahMap[startSurahId];
+            const endSurah = surahMap[endSurahId];
+
+            if (!startSurah || !endSurah) {
+                showLogMessage("Invalid Surah selected.", true);
+                return;
+            }
+
+            if (startAyah > startSurah.verses || endAyah > endSurah.verses) {
+                showLogMessage("Ayah number exceeds the maximum for the selected Surah.", true);
+                return;
+            }
+
+            const totalVersesAtStart = getCumulativeVerseCount(startSurahId, startAyah) - 1; 
+            const totalVersesAtEnd = getCumulativeVerseCount(endSurahId, endAyah);
+
+            if (totalVersesAtStart >= totalVersesAtEnd) {
+                showLogMessage("The 'End' Ayah must be later than the 'Start' Ayah.", true);
+                return;
+            }
+            
+            const totalMemorizedBeforeSession = getTotalMemorizedVerses();
+            
+            if (totalVersesAtEnd <= totalMemorizedBeforeSession) {
+                showLogMessage("This range is already fully or partially recorded. Please only log new memorization.", true);
+                return;
+            }
+
+            let updatedProgress = JSON.parse(JSON.stringify(memorizationProgress));
+            let versesLoggedCount = 0; 
+
+            for (let i = 0; i < updatedProgress.length; i++) {
+                const surah = updatedProgress[i];
+                const cumulativeStartOfSurah = getCumulativeVerseCount(surah.id, 1) - 1;
+
+                if (totalVersesAtEnd >= cumulativeStartOfSurah + 1) {
                     
-                    <!-- Manage Levels -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Manage Levels</h3>
-                        <form id="add-level-form" class="flex flex-col md:flex-row gap-4 mb-6">
-                            <input type="text" id="level-name" placeholder="New Level Name (e.g., Qaida)" required class="flex-1 p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <button type="submit" class="px-6 py-3 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors">Add Level</button>
-                        </form>
-                        <h4 class="font-medium text-gray-600 mb-2">Existing Levels:</h4>
-                        <ul id="levels-list" class="space-y-2 text-gray-700"></ul>
-                    </div>
-                    
-                    <!-- Manage Teachers -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Manage Teachers</h3>
-                        <form id="add-teacher-form" class="space-y-4">
-                            <input type="text" id="teacher-name" placeholder="Teacher Name" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="email" id="teacher-email" placeholder="Teacher Email" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="text" id="teacher-uid" placeholder="Teacher UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <select id="teacher-level" class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                                <option value="">Assign a Level</option>
-                            </select>
-                            <button type="submit" class="w-full px-6 py-3 rounded-lg text-white font-medium bg-green-500 hover:bg-green-600 transition-colors">Add Teacher</button>
-                        </form>
-                        <h4 class="font-medium text-gray-600 mt-6 mb-2">Existing Teachers:</h4>
-                        <ul id="teachers-list" class="space-y-2 text-gray-700"></ul>
-                    </div>
+                    const newMemorizedInSurah = Math.min(
+                        surah.verses, 
+                        totalVersesAtEnd - cumulativeStartOfSurah
+                    );
 
-                    <!-- Manage Students -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Manage Students</h3>
-                        <form id="add-student-form" class="space-y-4">
-                            <input type="text" id="student-name" placeholder="Student Name" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="email" id="student-email" placeholder="Student Email" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="text" id="student-uid" placeholder="Student UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="text" id="student-teacher-uid" placeholder="Teacher UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <button type="submit" class="w-full px-6 py-3 rounded-lg text-white font-medium bg-purple-500 hover:bg-purple-600 transition-colors">Add Student</button>
-                        </form>
-                        <h4 class="font-medium text-gray-600 mt-6 mb-2">Existing Students:</h4>
-                        <ul id="students-list" class="space-y-2 text-gray-700"></ul>
-                    </div>
-                </div>
-            `;
-        }
-
-        function createTeacherDashboard(teacherId) {
-            return `
-                <div id="teacher-dashboard" class="space-y-8">
-                    <h2 class="text-2xl font-bold text-gray-800">Teacher Dashboard</h2>
-
-                    <!-- Add Student -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">Add New Student</h3>
-                        <form id="teacher-add-student-form" class="space-y-4">
-                            <input type="text" id="teacher-student-name" placeholder="Student Name" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="email" id="teacher-student-email" placeholder="Student Email" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <input type="text" id="teacher-student-uid" placeholder="Student UID" required class="w-full p-3 rounded-lg border-2 border-gray-300 focus:outline-none focus:border-blue-500">
-                            <button type="submit" class="w-full px-6 py-3 rounded-lg text-white font-medium bg-purple-500 hover:bg-purple-600 transition-colors">Add Student</button>
-                        </form>
-                    </div>
-
-                    <!-- Student List -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">My Students</h3>
-                        <ul id="teacher-students-list" class="space-y-4 text-gray-700"></ul>
-                    </div>
-                </div>
-            `;
-        }
-
-        function createStudentDashboard(studentId) {
-            return `
-                <div id="student-dashboard" class="space-y-8">
-                    <h2 class="text-2xl font-bold text-gray-800">Student Dashboard</h2>
-
-                    <!-- View Goals -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">My Goals</h3>
-                        <ul id="student-goals-list" class="list-disc list-inside space-y-2 text-gray-700">
-                            <li>Weekly Qaida Lessons</li>
-                            <li>Daily Quran Reading</li>
-                            <li>Memorize Surah Al-Fatiha</li>
-                        </ul>
-                        <button id="update-goals-btn" class="mt-4 px-6 py-2 rounded-lg text-white font-medium bg-blue-500 hover:bg-blue-600 transition-colors">Update Goals</button>
-                    </div>
-
-                    <!-- View Progress -->
-                    <div class="bg-gray-50 p-6 rounded-xl shadow-md">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-700">My Progress</h3>
-                        <ul id="student-progress-list" class="space-y-2 text-gray-700"></ul>
-                    </div>
-                </div>
-            `;
-        }
-
-        // --- Event Listeners and Firestore Operations ---
-        function setupDashboardListeners(role, userId) {
-            if (role === 'admin') {
-                const addLevelForm = document.getElementById('add-level-form');
-                const addTeacherForm = document.getElementById('add-teacher-form');
-                const addStudentForm = document.getElementById('add-student-form');
-                const levelsList = document.getElementById('levels-list');
-                const teachersList = document.getElementById('teachers-list');
-                const studentsList = document.getElementById('students-list');
-                const teacherLevelSelect = document.getElementById('teacher-level');
-
-                // Real-time listener for Levels
-                onSnapshot(collection(db, `artifacts/${appId}/public/data/levels`), (snapshot) => {
-                    levelsList.innerHTML = '';
-                    teacherLevelSelect.innerHTML = '<option value="">Assign a Level</option>';
-                    snapshot.forEach((doc) => {
-                        const level = doc.data();
-                        const li = document.createElement('li');
-                        li.textContent = level.name;
-                        levelsList.appendChild(li);
-
-                        const option = document.createElement('option');
-                        option.value = level.name;
-                        option.textContent = level.name;
-                        teacherLevelSelect.appendChild(option);
-                    });
-                }, (error) => showMessage('error', `Error fetching levels: ${error.message}`));
-
-                // Real-time listener for Teachers
-                onSnapshot(collection(db, `artifacts/${appId}/public/data/teachers`), (snapshot) => {
-                    teachersList.innerHTML = '';
-                    snapshot.forEach((doc) => {
-                        const teacher = doc.data();
-                        const li = document.createElement('li');
-                        li.textContent = `${teacher.name} (${teacher.email}) - Level: ${teacher.level || 'N/A'}`;
-                        teachersList.appendChild(li);
-                    });
-                }, (error) => showMessage('error', `Error fetching teachers: ${error.message}`));
-
-                // Real-time listener for Students
-                onSnapshot(collection(db, `artifacts/${appId}/public/data/students`), (snapshot) => {
-                    studentsList.innerHTML = '';
-                    snapshot.forEach((doc) => {
-                        const student = doc.data();
-                        const li = document.createElement('li');
-                        li.textContent = `${student.name} (${student.email}) - Teacher UID: ${student.teacherUid}`;
-                        studentsList.appendChild(li);
-                    });
-                }, (error) => showMessage('error', `Error fetching students: ${error.message}`));
-
-                addLevelForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('level-name').value;
-                    try {
-                        await addDoc(collection(db, `artifacts/${appId}/public/data/levels`), { name });
-                        showMessage('success', 'Level added successfully!');
-                        addLevelForm.reset();
-                    } catch (e) {
-                        showMessage('error', `Error adding level: ${e.message}`);
+                    if (newMemorizedInSurah > surah.versesMemorized) {
+                        versesLoggedCount += (newMemorizedInSurah - surah.versesMemorized);
+                        updatedProgress[i].versesMemorized = newMemorizedInSurah;
                     }
-                });
-
-                addTeacherForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('teacher-name').value;
-                    const email = document.getElementById('teacher-email').value;
-                    const uid = document.getElementById('teacher-uid').value;
-                    const level = document.getElementById('teacher-level').value;
-                    try {
-                        await setDoc(doc(db, `artifacts/${appId}/public/data/teachers`, uid), { name, email, uid, level });
-                        showMessage('success', 'Teacher added successfully!');
-                        addTeacherForm.reset();
-                    } catch (e) {
-                        showMessage('error', `Error adding teacher: ${e.message}`);
-                    }
-                });
-
-                addStudentForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('student-name').value;
-                    const email = document.getElementById('student-email').value;
-                    const uid = document.getElementById('student-uid').value;
-                    const teacherUid = document.getElementById('student-teacher-uid').value;
-                    try {
-                        await setDoc(doc(db, `artifacts/${appId}/public/data/students`, uid), { name, email, uid, teacherUid });
-                        showMessage('success', 'Student added successfully!');
-                        addStudentForm.reset();
-                    } catch (e) {
-                        showMessage('error', `Error adding student: ${e.message}`);
-                    }
-                });
-            } else if (role === 'teacher') {
-                const teacherAddStudentForm = document.getElementById('teacher-add-student-form');
-                const teacherStudentsList = document.getElementById('teacher-students-list');
-
-                // Real-time listener for students associated with this teacher
-                const q = query(collection(db, `artifacts/${appId}/public/data/students`), where("teacherUid", "==", userId));
-                onSnapshot(q, (snapshot) => {
-                    teacherStudentsList.innerHTML = '';
-                    snapshot.forEach((doc) => {
-                        const student = doc.data();
-                        const li = document.createElement('li');
-                        li.className = 'flex items-center justify-between p-4 bg-white rounded-lg shadow-sm';
-                        li.innerHTML = `
-                            <span>${student.name} (${student.email})</span>
-                            <button class="view-progress-btn px-4 py-2 text-sm rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors" data-uid="${student.uid}">View Progress</button>
-                        `;
-                        teacherStudentsList.appendChild(li);
-                    });
-
-                    // Add event listeners to the new buttons
-                    teacherStudentsList.querySelectorAll('.view-progress-btn').forEach(button => {
-                        button.addEventListener('click', (e) => {
-                            const studentUid = e.target.getAttribute('data-uid');
-                            showMessage('info', `Viewing progress for student UID: ${studentUid}`);
-                            console.log(`View Progress clicked for student UID: ${studentUid}`);
-                        });
-                    });
-                }, (error) => showMessage('error', `Error fetching students: ${error.message}`));
-
-                teacherAddStudentForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    const name = document.getElementById('teacher-student-name').value;
-                    const email = document.getElementById('teacher-student-email').value;
-                    const uid = document.getElementById('teacher-student-uid').value;
-                    try {
-                        await setDoc(doc(db, `artifacts/${appId}/public/data/students`, uid), { name, email, uid, teacherUid: userId });
-                        showMessage('success', 'Student added successfully!');
-                        teacherAddStudentForm.reset();
-                    } catch (e) {
-                        showMessage('error', `Error adding student: ${e.message}`);
-                    }
-                });
-
-            } else if (role === 'student') {
-                const updateGoalsBtn = document.getElementById('update-goals-btn');
-                const studentGoalsList = document.getElementById('student-goals-list');
-                const studentProgressList = document.getElementById('student-progress-list');
-
-                updateGoalsBtn.addEventListener('click', async () => {
-                    const goalsDocRef = doc(db, `artifacts/${appId}/users/${userId}/goals/list`);
-                    const goals = [
-                        'Weekly Qaida Lessons',
-                        'Daily Quran Reading',
-                        'Memorize Surah Al-Fatiha',
-                        'Learn 5 new verses per week'
-                    ];
-                    try {
-                        await setDoc(goalsDocRef, { goals });
-                        showMessage('success', 'Goals updated successfully!');
-                    } catch (e) {
-                        showMessage('error', `Error updating goals: ${e.message}`);
-                    }
-                });
-
-                // Real-time listener for student progress
-                const progressCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/progress`);
-                onSnapshot(progressCollectionRef, (snapshot) => {
-                    studentProgressList.innerHTML = '';
-                    if (snapshot.empty) {
-                        const li = document.createElement('li');
-                        li.className = 'p-4 bg-gray-100 rounded-lg text-gray-500 text-center';
-                        li.textContent = 'No progress entries yet.';
-                        studentProgressList.appendChild(li);
-                    } else {
-                        snapshot.forEach((doc) => {
-                            const entry = doc.data();
-                            const li = document.createElement('li');
-                            li.className = 'p-4 bg-white rounded-lg shadow-sm';
-                            li.innerHTML = `
-                                <p class="text-sm font-semibold">${entry.description}</p>
-                                <p class="text-xs text-gray-500 mt-1">${new Date(entry.timestamp).toLocaleString()}</p>
-                            `;
-                            studentProgressList.appendChild(li);
-                        });
-                    }
-                }, (error) => showMessage('error', `Error fetching progress: ${error.message}`));
+                }
             }
-        }
 
-        // --- Utility Functions ---
-        function showMessage(type, message) {
-            statusMessageEl.textContent = message;
-            statusMessageEl.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-            if (type === 'success') {
-                statusMessageEl.classList.add('bg-green-100', 'text-green-700');
-            } else if (type === 'error') {
-                statusMessageEl.classList.add('bg-red-100', 'text-red-700');
+            if (versesLoggedCount === 0) {
+                 showLogMessage("No net progress recorded. Check if the range is already memorized.", true);
+                 return;
+            }
+
+            // --- DAILY LOGGING LOGIC ---
+            const today = new Date().toISOString().split('T')[0]; 
+            const startSurahName = startSurah.name;
+            const endSurahName = endSurah.name;
+            
+            const startRangeText = `${startSurahName}:${startAyah}`;
+            const endRangeText = `${endSurahName}:${endAyah}`;
+
+            let todayLogIndex = dailyLogs.findIndex(log => log.date === today);
+            
+            if (todayLogIndex > -1) {
+                dailyLogs[todayLogIndex].versesAdded += versesLoggedCount;
+                dailyLogs[todayLogIndex].surahEnd = endRangeText; 
             } else {
-                statusMessageEl.classList.add('bg-blue-100', 'text-blue-700');
+                dailyLogs.push({
+                    date: today,
+                    versesAdded: versesLoggedCount,
+                    surahStart: startRangeText,
+                    surahEnd: endRangeText,
+                });
             }
-            setTimeout(() => {
-                statusMessageEl.classList.add('hidden');
-            }, 5000);
+
+            // Save to DB
+            memorizationProgress = updatedProgress;
+            
+            try {
+                await setDoc(selectedStudentDocRef, { 
+                    progress: memorizationProgress, 
+                    dailyLogs: dailyLogs, 
+                    lastUpdated: new Date().toISOString() 
+                }, { merge: true });
+                
+                renderProgress(memorizationProgress);
+                renderDailyLogs(dailyLogs);
+                showLogMessage(`Successfully logged ${versesLoggedCount} new verses, completing up to ${endSurahName}:${endAyah}.`);
+            } catch (error) {
+                console.error("Error logging session:", error);
+                showLogMessage("Error saving session to database.", true);
+            }
         }
+
+
+        // --- RENDERING & STUDENT MANAGEMENT FUNCTIONS (Remain the same as previous version) ---
+        
+        function renderGoalOptions() {
+            const selectTarget = document.getElementById('target-surah');
+            const selectStart = document.getElementById('session-start-surah'); 
+            const selectEnd = document.getElementById('session-end-surah'); 
+
+            [selectTarget, selectStart, selectEnd].forEach(select => select.innerHTML = '');
+
+            initialQuranData.forEach(surah => {
+                const option = document.createElement('option');
+                option.value = surah.id;
+                option.textContent = `${surah.id}. ${surah.name} (${surah.verses} vs)`;
+                
+                selectTarget.appendChild(option.cloneNode(true));
+                selectStart.appendChild(option.cloneNode(true));
+                selectEnd.appendChild(option.cloneNode(true));
+            });
+            
+            updateGoalVerseMax(); 
+            updateSessionVerseMax();
+        }
+
+        function renderGoalInputs(goal) {
+            const targetSurah = document.getElementById('target-surah');
+            const targetVerse = document.getElementById('target-verse');
+            const targetDate = document.getElementById('target-date');
+            if (targetSurah) targetSurah.value = goal.targetSurahId || 114;
+            if (targetVerse) targetVerse.value = goal.targetVerse || 6;
+            if (targetDate) targetDate.value = goal.targetDate || '';
+
+            updateGoalVerseMax(); 
+            
+            const pagesPerDay = document.getElementById('pages-per-day');
+            if (pagesPerDay) pagesPerDay.value = goal.pagesPerDay || 1.0;
+
+            const weeklyRateValue = document.getElementById('weekly-rate-value');
+            const weeklyRateUnit = document.getElementById('weekly-rate-unit');
+            if (weeklyRateValue) weeklyRateValue.value = goal.weeklyRateValue || 50;
+            if (weeklyRateUnit) weeklyRateUnit.value = goal.weeklyRateUnit || 'verses';
+
+            const totalQuranPages = document.getElementById('total-quran-pages');
+            if (totalQuranPages) totalQuranPages.value = goal.totalQuranPages || 604;
+            
+            switchGoalMode(goal.mode || 'date');
+        }
+
+        function renderDailyLogs(logs) {
+            const tbody = document.getElementById('daily-log-table-body');
+            tbody.innerHTML = '';
+            
+            const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sortedLogs.forEach(log => {
+                const row = tbody.insertRow();
+                row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
+
+                const dateDisplay = new Date(log.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+
+                row.insertCell().textContent = dateDisplay;
+                
+                const versesCell = row.insertCell();
+                versesCell.className = 'py-2 px-3 whitespace-nowrap font-bold text-teal-700 text-base';
+                versesCell.textContent = log.versesAdded;
+
+                const rangeCell = row.insertCell();
+                rangeCell.className = 'py-2 px-3 text-sm text-gray-700';
+                rangeCell.textContent = `${log.surahStart} to ${log.surahEnd}`;
+            });
+            
+            if (sortedLogs.length === 0) {
+                 const row = tbody.insertRow();
+                 const cell = row.insertCell();
+                 cell.colSpan = 3;
+                 cell.className = 'text-center text-gray-500 py-4 italic';
+                 cell.textContent = 'No daily memorization sessions logged yet.';
+            }
+        }
+
+        function renderProgress(progressData) {
+            const tbody = document.getElementById('progress-table-body');
+            tbody.innerHTML = '';
+            
+            progressData.forEach(surah => {
+                const row = tbody.insertRow();
+                row.className = 'hover:bg-gray-50 transition duration-150 ease-in-out';
+
+                const completion = ((surah.versesMemorized / surah.verses) * 100) || 0;
+                let progressColor = 'bg-gray-400';
+                if (completion > 0 && completion < 100) {
+                    progressColor = 'bg-blue-500';
+                } else if (completion === 100) {
+                    progressColor = 'bg-green-600';
+                }
+
+                row.insertCell().textContent = surah.id;
+                
+                const nameCell = row.insertCell();
+                nameCell.className = 'py-2 px-3 whitespace-nowrap'; 
+                nameCell.innerHTML = `
+                    <div class="font-medium text-gray-900 text-sm md:text-base">${surah.name}</div>
+                    <div class="text-xs text-gray-500 font-arabic text-right">${surah.arabicName}</div>
+                `;
+
+                const totalVersesCell = row.insertCell();
+                totalVersesCell.textContent = surah.verses;
+                totalVersesCell.className = 'py-2 px-3 whitespace-nowrap hide-on-mobile'; 
+
+                const progressCell = row.insertCell();
+                progressCell.className = 'py-2 px-3 whitespace-nowrap font-bold text-sm md:text-base text-center'; 
+                progressCell.textContent = `${surah.versesMemorized} / ${surah.verses}`;
+
+                const percentCell = row.insertCell();
+                percentCell.className = 'py-2 px-3 hide-on-mobile'; 
+                percentCell.innerHTML = `
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div class="h-2.5 rounded-full ${progressColor}" style="width: ${completion.toFixed(1)}%"></div>
+                    </div>
+                    <span class="text-xs text-gray-600 mt-1 block">${completion.toFixed(1)}%</span>
+                `;
+            });
+            
+            calculateProjection();
+        }
+
+        function renderStudentSelector() {
+            const selector = document.getElementById('student-selector');
+            const currentSelection = selector.value;
+            selector.innerHTML = '<option value="">-- Please Select a Student --</option>';
+
+            students.forEach(student => {
+                const option = document.createElement('option');
+                option.value = student.id;
+                option.textContent = student.name;
+                selector.appendChild(option);
+            });
+            
+            selector.value = currentSelection; 
+            
+            if (selectedStudentId) {
+                document.getElementById('current-student-name').textContent = students.find(s => s.id === selectedStudentId)?.name || 'N/A';
+                document.getElementById('selected-student-display').classList.remove('hidden');
+                document.getElementById('student-specific-content').classList.remove('hidden');
+            } else {
+                document.getElementById('selected-student-display').classList.add('hidden');
+                document.getElementById('student-specific-content').classList.add('hidden');
+                document.getElementById('remaining-verses').textContent = '--';
+                document.getElementById('daily-target').textContent = '--';
+                document.getElementById('projected-completion-date').textContent = '--';
+                document.getElementById('actual-pace').textContent = '--';
+            }
+
+            document.getElementById('loading-spinner').classList.add('hidden');
+            document.getElementById('tracker-content').classList.remove('hidden');
+        }
+
+        // --- FIREBASE LISTENERS ---
+        
+        function listenForStudentList() {
+            const studentCollectionPath = getStudentCollectionPath(userId);
+            if (!studentCollectionPath) return;
+
+            const studentsRef = collection(db, studentCollectionPath);
+
+            onSnapshot(studentsRef, (snapshot) => {
+                students = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })).sort((a, b) => a.name.localeCompare(b.name)); 
+                
+                if (selectedStudentId && !students.find(s => s.id === selectedStudentId)) {
+                    handleStudentSelect('');
+                }
+
+                renderStudentSelector();
+                console.log(`Loaded ${students.length} students.`);
+            }, (error) => {
+                console.error("Error fetching students list:", error);
+            });
+        }
+        
+        function listenForSelectedStudentData() {
+            if (studentDocUnsubscribe) {
+                studentDocUnsubscribe(); 
+            }
+
+            if (!selectedStudentId || !userId) {
+                memorizationProgress = [];
+                dailyLogs = []; 
+                currentGoal = {};
+                renderProgress([]);
+                renderDailyLogs([]); 
+                return;
+            }
+
+            selectedStudentDocRef = doc(db, getStudentCollectionPath(userId), selectedStudentId);
+
+            studentDocUnsubscribe = onSnapshot(selectedStudentDocRef, (docSnapshot) => {
+                if (docSnapshot.exists()) {
+                    const data = docSnapshot.data();
+
+                    // Load Progress
+                    if (data.progress && Array.isArray(data.progress) && data.progress.length === initialQuranData.length) {
+                        memorizationProgress = data.progress;
+                    } else {
+                        memorizationProgress = JSON.parse(JSON.stringify(initialQuranData));
+                        setDoc(selectedStudentDocRef, { progress: memorizationProgress }, { merge: true }); 
+                    }
+
+                    // Load Daily Logs
+                    dailyLogs = data.dailyLogs || []; 
+                    
+                    // Load Goal
+                    const defaultGoal = {
+                        mode: 'date',
+                        targetSurahId: 114,
+                        targetVerse: 6,
+                        targetDate: null,
+                        pagesPerDay: 1.0,
+                        weeklyRateValue: 50, 
+                        weeklyRateUnit: 'verses', 
+                        totalQuranPages: 604
+                    };
+                    currentGoal = { ...defaultGoal, ...data.goal };
+                    renderGoalInputs(currentGoal);
+                    
+                    console.log(`Data loaded for student ID: ${selectedStudentId}`);
+
+                } else {
+                    console.warn(`Student document ${selectedStudentId} not found, re-initializing.`);
+                    memorizationProgress = JSON.parse(JSON.stringify(initialQuranData)); 
+                    dailyLogs = []; 
+                    currentGoal = defaultGoal;
+                    setDoc(selectedStudentDocRef, { progress: memorizationProgress, dailyLogs: dailyLogs, goal: currentGoal });
+                }
+                
+                renderProgress(memorizationProgress);
+                renderDailyLogs(dailyLogs); 
+                updateSessionVerseMax({ target: { id: 'session-start-surah' } });
+                updateSessionVerseMax({ target: { id: 'session-end-surah' } });
+
+
+            }, (error) => {
+                    console.error("Error listening to student progress changes:", error);
+            });
+        }
+        
+        // --- HANDLERS ---
+        
+        function handleStudentSelect(event) {
+            const studentId = event.target ? event.target.value : event;
+            selectedStudentId = studentId;
+            listenForSelectedStudentData();
+            renderStudentSelector(); 
+        }
+        
+        async function handleAddStudent(event) {
+            event.preventDefault();
+            const input = document.getElementById('new-student-name');
+            const studentName = input.value.trim();
+            if (!studentName || !db || !userId) return;
+
+            const studentCollectionPath = getStudentCollectionPath(userId);
+            if (!studentCollectionPath) {
+                showLogMessage("User not authenticated to add student.", true);
+                return;
+            }
+            
+            try {
+                const defaultGoal = {
+                    mode: 'date',
+                    targetSurahId: 114,
+                    targetVerse: 6,
+                    targetDate: null,
+                    pagesPerDay: 1.0,
+                    weeklyRateValue: 50,
+                    weeklyRateUnit: 'verses',
+                    totalQuranPages: 604
+                };
+
+                const docRef = await addDoc(collection(db, studentCollectionPath), {
+                    name: studentName,
+                    progress: JSON.parse(JSON.stringify(initialQuranData)),
+                    dailyLogs: [],
+                    goal: defaultGoal,
+                    createdAt: new Date().toISOString()
+                });
+                input.value = '';
+                showLogMessage(`Added new student: ${studentName}`, false);
+                document.getElementById('student-selector').value = docRef.id;
+                handleStudentSelect(docRef.id);
+            } catch (error) {
+                console.error("Error adding student:", error);
+                showLogMessage("Failed to add student. Check database rules.", true);
+            }
+        }
+
+
+        // --- INITIALIZATION AND BINDINGS ---
+
+        function bindEvents() {
+            document.querySelectorAll('.goal-mode-btn').forEach(button => {
+                button.addEventListener('click', (e) => switchGoalMode(e.target.dataset.mode));
+            });
+            
+            document.getElementById('save-goal-date-btn').addEventListener('click', () => saveGoal('date'));
+            document.getElementById('save-goal-pages-btn').addEventListener('click', () => saveGoal('pages'));
+            document.getElementById('save-goal-weekly-btn').addEventListener('click', () => saveGoal('weekly_verses'));
+
+            document.getElementById('target-surah').addEventListener('change', updateGoalVerseMax);
+            document.getElementById('total-quran-pages').addEventListener('change', () => { currentGoal.totalQuranPages = document.getElementById('total-quran-pages').value; calculateProjection(); });
+            document.getElementById('pages-per-day').addEventListener('change', () => { currentGoal.pagesPerDay = document.getElementById('pages-per-day').value; calculateProjection(); });
+            
+            document.getElementById('weekly-rate-value').addEventListener('change', () => { currentGoal.weeklyRateValue = document.getElementById('weekly-rate-value').value; calculateProjection(); });
+            document.getElementById('weekly-rate-unit').addEventListener('change', () => { currentGoal.weeklyRateUnit = document.getElementById('weekly-rate-unit').value; calculateProjection(); });
+            
+            document.getElementById('log-session-btn').addEventListener('click', logSession);
+            document.getElementById('session-start-surah').addEventListener('change', updateSessionVerseMax);
+            document.getElementById('session-end-surah').addEventListener('change', updateSessionVerseMax);
+
+            document.getElementById('student-selector').addEventListener('change', handleStudentSelect);
+            document.getElementById('add-student-form').addEventListener('submit', handleAddStudent);
+        }
+
+        function initializeFirebase() {
+            renderGoalOptions(); 
+            bindEvents();
+
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        document.getElementById('user-id-display').textContent = `Authenticated User ID: ${userId}`;
+                        listenForStudentList(); 
+                    } else {
+                        console.log("No authenticated user found. Signing in anonymously...");
+                        try {
+                            // Use anonymous sign-in for the general public environment
+                            const anonUser = await signInAnonymously(auth);
+                            userId = anonUser.user.uid;
+                            document.getElementById('user-id-display').textContent = `Authenticated Anonymously. User ID: ${userId}`;
+                            listenForStudentList(); 
+                        } catch (error) {
+                            console.error("Anonymous Sign-in failed.", error);
+                            document.getElementById('loading-spinner').innerHTML = `<p class="text-red-600">Failed to connect to Firebase. Please check your config and rules.</p>`;
+                        }
+                    }
+                });
+
+            } catch (e) {
+                console.error("Failed to initialize Firebase:", e);
+                document.getElementById('loading-spinner').innerHTML = `<p class="text-red-600">Error loading database. Check console for details.</p>`;
+            }
+        }
+        
+        window.onload = initializeFirebase;
     </script>
 </body>
 </html>
